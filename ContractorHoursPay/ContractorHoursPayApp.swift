@@ -1,6 +1,6 @@
 //
-//  AuthDemoApp.swift
-//  AuthDemo
+//  ContractorHoursPayApp.swift
+//  ContractorHoursPay
 //
 //  Created by Luis Martinez on 22/08/2026.
 //
@@ -8,7 +8,7 @@
 import SwiftUI
 
 @main
-struct AuthDemoApp: App {
+struct ContractorHoursPayApp: App {
     @StateObject private var authManager = AuthManager()
 
     var body: some Scene {

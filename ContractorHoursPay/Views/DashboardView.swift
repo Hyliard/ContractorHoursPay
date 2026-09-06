@@ -93,7 +93,7 @@ struct DashboardView: View {
         Button {
             isShowingAddWorkLog = true
         } label: {
-            Label("Registrar horas", systemImage: "clock.badge.plus")
+            Label("Registrar horas", systemImage: "clock.badge.checkmark")
                 .font(.headline)
                 .frame(maxWidth: .infinity)
                 .padding(.vertical, 16)
