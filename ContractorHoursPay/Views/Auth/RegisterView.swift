@@ -4,115 +4,94 @@ struct RegisterView: View {
     @EnvironmentObject private var authManager: AuthManager
     @StateObject private var viewModel = RegisterViewModel()
     @Environment(\.dismiss) private var dismiss
+    @State private var isPasswordVisible = false
+    @FocusState private var focusedField: RegisterFocusedField?
+
+    private let accent = Color(red: 0.12, green: 0.34, blue: 0.25)
     
     var body: some View {
         NavigationStack {
-            ZStack {
-                LinearGradient(
-                    colors: [
-                        Color.yellow.opacity(0.38),
-                        Color(.systemBackground),
-                        Color.orange.opacity(0.16)
-                    ],
-                    startPoint: .topLeading,
-                    endPoint: .bottomTrailing
-                )
-                    .ignoresSafeArea()
+            ScrollView {
+                VStack(alignment: .leading, spacing: 24) {
+                    header
 
-                Circle()
-                    .fill(Color.yellow.opacity(0.28))
-                    .frame(width: 220, height: 220)
-                    .blur(radius: 28)
-                    .offset(x: -120, y: -260)
-
-                Circle()
-                    .fill(Color.orange.opacity(0.18))
-                    .frame(width: 260, height: 260)
-                    .blur(radius: 34)
-                    .offset(x: 140, y: 260)
-
-                ScrollView {
-                    VStack {
-                        Spacer(minLength: 40)
-
-                        VStack(spacing: 24) {
-                            VStack(spacing: 10) {
-                                Image(systemName: "person.crop.circle.badge.plus")
-                                    .font(.system(size: 48))
-                                    .foregroundStyle(.yellow)
-                                    .frame(width: 78, height: 78)
-                                    .background(Color.yellow.opacity(0.16), in: Circle())
-
-                                VStack(spacing: 4) {
-                                    Text("Crear cuenta")
-                                        .font(.title.bold())
-
-                                    Text("Completa tus datos para comenzar")
-                                        .font(.subheadline)
-                                        .foregroundStyle(.secondary)
-                                        .multilineTextAlignment(.center)
+                    VStack(spacing: 14) {
+                        RegisterField(title: "Nombre", systemImage: "person", accent: accent) {
+                            TextField("Nombre", text: $viewModel.name)
+                                .autocorrectionDisabled()
+                                .submitLabel(.next)
+                                .focused($focusedField, equals: .name)
+                                .onSubmit {
+                                    focusedField = .email
                                 }
-                            }
-
-                            VStack(spacing: 14) {
-                                RegisterField(systemImage: "person.fill") {
-                                    TextField("Nombre", text: $viewModel.name)
-                                        .autocorrectionDisabled()
-                                }
-
-                                RegisterField(systemImage: "envelope.fill") {
-                                    TextField("Email", text: $viewModel.email)
-                                        .textInputAutocapitalization(.never)
-                                        .keyboardType(.emailAddress)
-                                        .autocorrectionDisabled()
-                                }
-
-                                RegisterField(systemImage: "lock.fill") {
-                                    SecureField("Contraseña (mín. 8 caracteres)", text: $viewModel.password)
-                                }
-                            }
-
-                            if let errorMessage = viewModel.errorMessage {
-                                Text(errorMessage)
-                                    .font(.footnote)
-                                    .foregroundStyle(.red)
-                                    .multilineTextAlignment(.center)
-                                    .frame(maxWidth: .infinity)
-                                    .padding(12)
-                                    .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
-                            }
-
-                            Button {
-                                Task {
-                                    await viewModel.register(using: authManager)
-                                }
-                            } label: {
-                                if viewModel.isLoading {
-                                    ProgressView()
-                                        .frame(maxWidth: .infinity)
-                                } else {
-                                    Text("Registrarme")
-                                        .fontWeight(.semibold)
-                                        .frame(maxWidth: .infinity)
-                                }
-                            }
-                            .padding(.vertical, 15)
-                            .background(Color.yellow, in: RoundedRectangle(cornerRadius: 16, style: .continuous))
-                            .foregroundStyle(.black)
-                            .disabled(viewModel.isLoading)
+                                .accessibilityLabel("Nombre")
                         }
-                        .padding(24)
-                        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 28, style: .continuous))
-                        .shadow(color: .black.opacity(0.12), radius: 18, x: 0, y: 10)
-                        .padding(.horizontal, 20)
 
-                        Spacer(minLength: 40)
+                        RegisterField(title: "Email", systemImage: "envelope", accent: accent) {
+                            TextField("Email", text: $viewModel.email)
+                                .textInputAutocapitalization(.never)
+                                .keyboardType(.emailAddress)
+                                .autocorrectionDisabled()
+                                .submitLabel(.next)
+                                .focused($focusedField, equals: .email)
+                                .onSubmit {
+                                    focusedField = .password
+                                }
+                                .accessibilityLabel("Email")
+                        }
+
+                        RegisterField(title: "Contraseña", systemImage: "lock", accent: accent) {
+                            RegisterPasswordInput(
+                                placeholder: "Contraseña (mín. 8 caracteres)",
+                                text: $viewModel.password,
+                                isVisible: $isPasswordVisible,
+                                focusedField: $focusedField,
+                                focusValue: .password
+                            )
+                        }
                     }
-                    .frame(maxWidth: .infinity)
+
+                    if let errorMessage = viewModel.errorMessage {
+                        Text(errorMessage)
+                            .font(.footnote)
+                            .foregroundStyle(.red)
+                            .multilineTextAlignment(.leading)
+                            .frame(maxWidth: .infinity, alignment: .leading)
+                            .padding(12)
+                            .background(Color.red.opacity(0.10), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+                            .accessibilityLabel("Error de registro: \(errorMessage)")
+                    }
+
+                    Button {
+                        focusedField = nil
+                        Task {
+                            await viewModel.register(using: authManager)
+                        }
+                    } label: {
+                        if viewModel.isLoading {
+                            ProgressView()
+                                .tint(.white)
+                                .frame(maxWidth: .infinity)
+                        } else {
+                            Text("Crear cuenta")
+                                .fontWeight(.semibold)
+                                .frame(maxWidth: .infinity)
+                        }
+                    }
+                    .padding(.vertical, 15)
+                    .background(accent, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+                    .foregroundStyle(.white)
+                    .disabled(viewModel.isLoading)
+                    .accessibilityLabel(viewModel.isLoading ? "Creando cuenta" : "Crear cuenta")
+
+                    loginPrompt
                 }
+                .padding(.horizontal, 22)
+                .padding(.top, 28)
+                .padding(.bottom, 36)
             }
-            .navigationTitle("Crear cuenta")
-            .navigationBarTitleDisplayMode(.inline)
+            .background(Color(.systemBackground))
+            .scrollDismissesKeyboard(.interactively)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Cancelar") { dismiss() }
@@ -125,25 +104,134 @@ struct RegisterView: View {
             }
         }
     }
+
+    private var header: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            VStack(alignment: .leading, spacing: 6) {
+                HStack(spacing: 0) {
+                    Text("ContractorHours")
+                        .foregroundStyle(.primary)
+                    Text("Pay")
+                        .foregroundStyle(accent)
+                }
+                .font(.largeTitle)
+                .fontWeight(.bold)
+                .minimumScaleFactor(0.78)
+                .lineLimit(1)
+                .accessibilityLabel("ContractorHoursPay")
+
+                Text("Horas · Proyectos · Pagos")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+            }
+
+            VStack(alignment: .leading, spacing: 8) {
+                Text("Crear tu cuenta")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+
+                Text("Empieza a registrar tus horas, proyectos e ingresos.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+            .padding(.top, 8)
+        }
+        .padding(.top, 8)
+    }
+
+    private var loginPrompt: some View {
+        HStack(spacing: 4) {
+            Text("¿Ya tienes una cuenta?")
+                .foregroundStyle(.secondary)
+
+            Button {
+                dismiss()
+            } label: {
+                Text("Iniciar sesión")
+                    .fontWeight(.semibold)
+            }
+            .foregroundStyle(accent)
+            .accessibilityLabel("Iniciar sesión")
+        }
+        .font(.footnote)
+        .frame(maxWidth: .infinity)
+        .padding(.top, 2)
+    }
+}
+
+private enum RegisterFocusedField: Hashable {
+    case name
+    case email
+    case password
 }
 
 private struct RegisterField<Content: View>: View {
+    let title: String
     let systemImage: String
+    let accent: Color
     @ViewBuilder let content: Content
 
     var body: some View {
-        HStack(spacing: 12) {
-            Image(systemName: systemImage)
-                .font(.subheadline)
+        VStack(alignment: .leading, spacing: 8) {
+            Text(title)
+                .font(.caption)
+                .fontWeight(.medium)
                 .foregroundStyle(.secondary)
-                .frame(width: 22)
 
-            content
-                .textFieldStyle(.plain)
+            HStack(spacing: 12) {
+                Image(systemName: systemImage)
+                    .font(.subheadline)
+                    .foregroundStyle(accent)
+                    .frame(width: 22)
+
+                content
+                    .textFieldStyle(.plain)
+            }
+            .padding(.horizontal, 14)
+            .padding(.vertical, 13)
+            .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
-        .padding(.horizontal, 14)
-        .padding(.vertical, 13)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+    }
+}
+
+private struct RegisterPasswordInput: View {
+    let placeholder: String
+    @Binding var text: String
+    @Binding var isVisible: Bool
+    var focusedField: FocusState<RegisterFocusedField?>.Binding
+    let focusValue: RegisterFocusedField
+
+    var body: some View {
+        HStack(spacing: 8) {
+            Group {
+                if isVisible {
+                    TextField(placeholder, text: $text)
+                } else {
+                    SecureField(placeholder, text: $text)
+                }
+            }
+            .textInputAutocapitalization(.never)
+            .autocorrectionDisabled()
+            .submitLabel(.done)
+            .focused(focusedField, equals: focusValue)
+            .onSubmit {
+                focusedField.wrappedValue = nil
+            }
+            .accessibilityLabel("Contraseña, mínimo 8 caracteres")
+
+            Button {
+                isVisible.toggle()
+            } label: {
+                Image(systemName: isVisible ? "eye.slash" : "eye")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(width: 32, height: 32)
+            }
+            .buttonStyle(.plain)
+            .accessibilityLabel(isVisible ? "Ocultar contraseña" : "Mostrar contraseña")
+        }
     }
 }
 
