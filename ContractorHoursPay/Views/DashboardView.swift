@@ -2,22 +2,25 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @StateObject private var viewModel = DashboardViewModel()
+    @StateObject private var workLogsViewModel = WorkLogsViewModel()
     @State private var isShowingProfile = false
     @State private var isShowingAddWorkLog = false
-
-    private let summary = ContractorDashboardMock.summary
-    private let upcomingPayment = ContractorDashboardMock.upcomingPayment
-    private let recentWorkLogs = ContractorDashboardMock.recentWorkLogs
 
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(alignment: .leading, spacing: 20) {
                     header
-                    IncomeSummaryCard(summary: summary)
+                    if let errorMessage = viewModel.errorMessage {
+                        errorState(errorMessage)
+                    }
+                    IncomeSummaryCard(summaries: viewModel.summariesByCurrency, totalHours: viewModel.totalHours)
                     metricsGrid
-                    UpcomingPaymentCard(payment: upcomingPayment)
                     addHoursButton
+                    if !viewModel.isLoading && viewModel.monthlyWorkLogs.isEmpty && viewModel.errorMessage == nil {
+                        emptyState
+                    }
                     clientsAccess
                     contractsAccess
                     recentActivity
@@ -29,10 +32,26 @@ struct DashboardView: View {
             .background(Color(.systemGroupedBackground))
             .navigationTitle("Dashboard")
             .navigationBarTitleDisplayMode(.inline)
+            .overlay {
+                if viewModel.isLoading && viewModel.monthlyWorkLogs.isEmpty && viewModel.recentWorkLogs.isEmpty {
+                    ProgressView()
+                }
+            }
+            .task {
+                viewModel.configure(authManager: authManager)
+                await viewModel.loadDashboard()
+            }
+            .refreshable {
+                await viewModel.loadDashboard()
+            }
             .sheet(isPresented: $isShowingProfile) {
                 ProfileView()
             }
-            .sheet(isPresented: $isShowingAddWorkLog) {
+            .sheet(isPresented: $isShowingAddWorkLog, onDismiss: {
+                Task {
+                    await viewModel.loadDashboard()
+                }
+            }) {
                 AddWorkLogView()
                     .environmentObject(authManager)
             }
@@ -48,7 +67,7 @@ struct DashboardView: View {
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
-                Text("Aquí tienes tu resumen de septiembre")
+                Text("Aquí tienes tu resumen de \(viewModel.monthTitle)")
                     .font(.subheadline)
                     .foregroundStyle(.secondary)
             }
@@ -63,6 +82,7 @@ struct DashboardView: View {
                     .foregroundStyle(.blue)
                     .accessibilityLabel("Perfil")
             }
+            .accessibilityLabel("Perfil")
         }
         .padding(.top, 8)
     }
@@ -70,24 +90,31 @@ struct DashboardView: View {
     private var metricsGrid: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 102), spacing: 12)], spacing: 12) {
             MetricCard(
-                title: "Pendiente",
-                value: summary.pendingAmount.formattedCurrency(code: summary.currency),
-                systemImage: "hourglass.circle.fill",
+                title: "Horas",
+                value: "\(viewModel.totalHours.formattedHours) h",
+                systemImage: "clock.fill",
+                tint: .blue
+            )
+
+            MetricCard(
+                title: "Overtime",
+                value: "\(viewModel.overtimeHours.formattedHours) h",
+                systemImage: "clock.badge.exclamationmark.fill",
                 tint: .orange
             )
 
             MetricCard(
-                title: "Cobrado",
-                value: summary.paidAmount.formattedCurrency(code: summary.currency),
-                systemImage: "checkmark.circle.fill",
+                title: "Registros",
+                value: "\(viewModel.workLogCount)",
+                systemImage: "list.bullet.rectangle.fill",
                 tint: .green
             )
 
             MetricCard(
-                title: "Horas",
-                value: "\(summary.hoursWorked.formattedHours) h",
-                systemImage: "clock.fill",
-                tint: .blue
+                title: "Contratos",
+                value: "\(viewModel.workedContractCount)",
+                systemImage: "doc.text.fill",
+                tint: .indigo
             )
         }
     }
@@ -141,17 +168,58 @@ struct DashboardView: View {
 
     private var recentActivity: some View {
         DashboardSection(title: "Actividad reciente") {
-            VStack(spacing: 0) {
-                ForEach(recentWorkLogs.prefix(4)) { workLog in
-                    RecentWorkLogRow(workLog: workLog)
+            if viewModel.recentWorkLogs.isEmpty {
+                Text("No hay actividad reciente.")
+                    .font(.subheadline)
+                    .foregroundStyle(.secondary)
+                    .frame(maxWidth: .infinity, alignment: .leading)
+            } else {
+                VStack(spacing: 0) {
+                    ForEach(viewModel.recentWorkLogs) { workLog in
+                        NavigationLink {
+                            WorkLogDetailView(workLog: workLog, workLogsViewModel: workLogsViewModel)
+                        } label: {
+                            RecentWorkLogRow(workLog: workLog)
+                        }
+                        .buttonStyle(.plain)
 
-                    if workLog.id != recentWorkLogs.prefix(4).last?.id {
-                        Divider()
-                            .padding(.leading, 44)
+                        if workLog.id != viewModel.recentWorkLogs.last?.id {
+                            Divider()
+                                .padding(.leading, 44)
+                        }
                     }
                 }
             }
         }
+    }
+
+    private var emptyState: some View {
+        Text("No registraste horas este mes.")
+            .font(.subheadline)
+            .foregroundStyle(.secondary)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private func errorState(_ message: String) -> some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text(message)
+                .font(.subheadline)
+                .foregroundStyle(.red)
+
+            Button {
+                Task {
+                    await viewModel.loadDashboard()
+                }
+            } label: {
+                Label("Reintentar", systemImage: "arrow.clockwise")
+            }
+            .font(.subheadline)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(16)
+        .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private var accountSection: some View {
@@ -221,7 +289,8 @@ struct DashboardView: View {
 }
 
 private struct IncomeSummaryCard: View {
-    let summary: ContractorSummary
+    let summaries: [DashboardCurrencySummary]
+    let totalHours: Decimal
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -233,21 +302,39 @@ private struct IncomeSummaryCard: View {
                 Spacer()
             }
 
-            Text(summary.estimatedIncome.formattedCurrency(code: summary.currency))
-                .font(.system(.largeTitle, design: .rounded, weight: .bold))
-                .foregroundStyle(.primary)
-                .lineLimit(1)
-                .minimumScaleFactor(0.72)
-                .accessibilityLabel("Estimado este mes \(summary.estimatedIncome.formattedCurrency(code: summary.currency))")
-
-            HStack(spacing: 12) {
-                Text("\(summary.hoursWorked.formattedHours) h trabajadas")
-                Text("•")
-                    .foregroundStyle(.tertiary)
-                Text("\(summary.hourlyRate.formattedCurrency(code: summary.currency))/h")
+            if summaries.isEmpty {
+                Text("Sin ingresos estimados")
+                    .font(.title2)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.primary)
+            } else if summaries.count == 1, let summary = summaries.first {
+                Text(summary.estimatedIncome.formattedCurrency(code: summary.currency))
+                    .font(.system(.largeTitle, design: .rounded, weight: .bold))
+                    .foregroundStyle(.primary)
+                    .lineLimit(1)
+                    .minimumScaleFactor(0.72)
+                    .accessibilityLabel("Estimado este mes \(summary.estimatedIncome.formattedCurrency(code: summary.currency))")
+            } else {
+                VStack(alignment: .leading, spacing: 8) {
+                    ForEach(summaries) { summary in
+                        HStack {
+                            Text(summary.currency)
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                            Spacer()
+                            Text(summary.estimatedIncome.formattedCurrency(code: summary.currency))
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .lineLimit(1)
+                                .minimumScaleFactor(0.8)
+                        }
+                    }
+                }
             }
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
+
+            Text("\(totalHours.formattedHours) h trabajadas")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
         }
         .padding(22)
         .frame(maxWidth: .infinity, alignment: .leading)
@@ -287,55 +374,14 @@ private struct MetricCard: View {
     }
 }
 
-private struct UpcomingPaymentCard: View {
-    let payment: UpcomingPayment
-
-    var body: some View {
-        DashboardSection(title: "Próximo pago") {
-            HStack(spacing: 14) {
-                Image(systemName: "calendar.badge.clock")
-                    .font(.title3)
-                    .foregroundStyle(.blue)
-                    .frame(width: 42, height: 42)
-                    .background(Color.blue.opacity(0.12), in: Circle())
-
-                VStack(alignment: .leading, spacing: 4) {
-                    Text(payment.client.name)
-                        .font(.headline)
-
-                    Text(payment.amount.formattedCurrency(code: payment.currency))
-                        .font(.subheadline)
-                        .foregroundStyle(.secondary)
-                }
-
-                Spacer()
-
-                VStack(alignment: .trailing, spacing: 6) {
-                    Text(payment.date.formatted(.dateTime.day().month(.abbreviated)))
-                        .font(.subheadline)
-                        .fontWeight(.semibold)
-
-                    Text(payment.status)
-                        .font(.caption)
-                        .fontWeight(.medium)
-                        .padding(.horizontal, 8)
-                        .padding(.vertical, 4)
-                        .background(Color.orange.opacity(0.14), in: Capsule())
-                        .foregroundStyle(.orange)
-                }
-            }
-        }
-    }
-}
-
 private struct RecentWorkLogRow: View {
-    let workLog: DashboardWorkLog
+    let workLog: WorkLog
 
     var body: some View {
         HStack(spacing: 12) {
-            Image(systemName: "clock")
+            Image(systemName: workLog.isOvertime ? "clock.badge.exclamationmark" : "clock")
                 .font(.subheadline)
-                .foregroundStyle(.secondary)
+                .foregroundStyle(workLog.isOvertime ? .orange : .secondary)
                 .frame(width: 32, height: 32)
                 .background(Color(.tertiarySystemGroupedBackground), in: Circle())
 
@@ -351,7 +397,7 @@ private struct RecentWorkLogRow: View {
 
             Spacer()
 
-            Text(workLog.amount.formattedCurrency(code: workLog.currency))
+            Text("\(workLog.hours) h")
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .lineLimit(1)
@@ -361,19 +407,21 @@ private struct RecentWorkLogRow: View {
 
     private var title: String {
         if let note = workLog.note, !note.isEmpty {
-            return "\(workLog.hours.formattedHours) h \(note) · \(workLog.client.name)"
+            return "\(workLog.contract.name) · \(workLog.contract.client.name) · \(note)"
         }
-        return "\(workLog.hours.formattedHours) h · \(workLog.client.name)"
+        return "\(workLog.contract.name) · \(workLog.contract.client.name)"
     }
 
     private var workLogDate: String {
-        if Calendar.current.isDateInToday(workLog.date) {
-            return "Hoy"
+        let baseDate: String
+        if Calendar.current.isDateInToday(workLog.workDate) {
+            baseDate = "Hoy"
+        } else if Calendar.current.isDateInYesterday(workLog.workDate) {
+            baseDate = "Ayer"
+        } else {
+            baseDate = workLog.workDate.formatted(.dateTime.day().month(.abbreviated))
         }
-        if Calendar.current.isDateInYesterday(workLog.date) {
-            return "Ayer"
-        }
-        return workLog.date.formatted(.dateTime.day().month(.abbreviated))
+        return workLog.isOvertime ? "\(baseDate) · Overtime" : baseDate
     }
 }
 
@@ -431,15 +479,20 @@ private struct DashboardSection<Content: View>: View {
 
 private extension Decimal {
     var formattedHours: String {
-        NSDecimalNumber(decimal: self)
-            .doubleValue
-            .formatted(.number.precision(.fractionLength(0...1)))
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .decimal
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSDecimalNumber(decimal: self)) ?? "0"
     }
 
     func formattedCurrency(code: String) -> String {
-        NSDecimalNumber(decimal: self)
-            .doubleValue
-            .formatted(.currency(code: code))
+        let formatter = NumberFormatter()
+        formatter.numberStyle = .currency
+        formatter.currencyCode = code
+        formatter.minimumFractionDigits = 0
+        formatter.maximumFractionDigits = 2
+        return formatter.string(from: NSDecimalNumber(decimal: self)) ?? "\(code) 0"
     }
 }
 
