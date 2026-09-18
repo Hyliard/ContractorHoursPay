@@ -98,7 +98,10 @@ struct APIClient {
             data: data
         )
 
-        let responseData = try await send(request)
+        let responseData = try await send(
+            request,
+            requestPreview: "<multipart form data: \(fieldName), \(mimeType), \(data.count) bytes>"
+        )
         return try decode(responseData)
     }
 
@@ -129,29 +132,84 @@ struct APIClient {
         return try await send(request)
     }
 
-    private func send(_ request: URLRequest) async throws -> Data {
+    private func send(_ request: URLRequest, requestPreview explicitRequestPreview: String? = nil) async throws -> Data {
+        let startedAt = Date()
+        let method = request.httpMethod ?? "GET"
+        let endpoint = endpointDescription(for: request)
+        let requestPreview = explicitRequestPreview
+            ?? DeveloperLogSanitizer.sanitizedPreview(
+                from: request.httpBody,
+                contentType: request.value(forHTTPHeaderField: "Content-Type")
+            )
+
         let data: Data
         let response: URLResponse
         do {
             (data, response) = try await session.data(for: request)
         } catch {
-            throw APIError.network(error.localizedDescription)
+            let apiError = APIError.network(error.localizedDescription)
+            recordDebugEntry(
+                method: method,
+                endpoint: endpoint,
+                statusCode: nil,
+                startedAt: startedAt,
+                requestPreview: requestPreview,
+                responsePreview: nil,
+                errorMessage: apiError.localizedDescription
+            )
+            throw apiError
         }
 
         guard let httpResponse = response as? HTTPURLResponse else {
-            throw APIError.invalidResponse
+            let apiError = APIError.invalidResponse
+            recordDebugEntry(
+                method: method,
+                endpoint: endpoint,
+                statusCode: nil,
+                startedAt: startedAt,
+                requestPreview: requestPreview,
+                responsePreview: DeveloperLogSanitizer.sanitizedPreview(from: data),
+                errorMessage: apiError.localizedDescription
+            )
+            throw apiError
         }
+
+        let responsePreview = DeveloperLogSanitizer.sanitizedPreview(
+            from: data,
+            contentType: httpResponse.value(forHTTPHeaderField: "Content-Type")
+        )
 
         guard (200...299).contains(httpResponse.statusCode) else {
+            let apiError: APIError
             if httpResponse.statusCode == 401 {
-                throw APIError.notAuthenticated
+                apiError = .notAuthenticated
+            } else if let errorPayload = try? JSONDecoder().decode(APIErrorPayload.self, from: data) {
+                apiError = .server(message: errorPayload.error.message, statusCode: httpResponse.statusCode)
+            } else {
+                apiError = .server(message: "Ocurrió un error inesperado.", statusCode: httpResponse.statusCode)
             }
-            if let errorPayload = try? JSONDecoder().decode(APIErrorPayload.self, from: data) {
-                throw APIError.server(message: errorPayload.error.message, statusCode: httpResponse.statusCode)
-            }
-            throw APIError.server(message: "Ocurrió un error inesperado.", statusCode: httpResponse.statusCode)
+
+            recordDebugEntry(
+                method: method,
+                endpoint: endpoint,
+                statusCode: httpResponse.statusCode,
+                startedAt: startedAt,
+                requestPreview: requestPreview,
+                responsePreview: responsePreview,
+                errorMessage: apiError.localizedDescription
+            )
+            throw apiError
         }
 
+        recordDebugEntry(
+            method: method,
+            endpoint: endpoint,
+            statusCode: httpResponse.statusCode,
+            startedAt: startedAt,
+            requestPreview: requestPreview,
+            responsePreview: responsePreview,
+            errorMessage: nil
+        )
         return data
     }
 
@@ -194,6 +252,43 @@ struct APIClient {
         body.append(data)
         body.append("\r\n--\(boundary)--\r\n")
         return body
+    }
+
+    private func endpointDescription(for request: URLRequest) -> String {
+        guard let url = request.url else { return "unknown" }
+        var endpoint = url.path
+        if let query = url.query, !query.isEmpty {
+            endpoint += "?\(query)"
+        }
+        return endpoint
+    }
+
+    private func recordDebugEntry(
+        method: String,
+        endpoint: String,
+        statusCode: Int?,
+        startedAt: Date,
+        requestPreview: String?,
+        responsePreview: String?,
+        errorMessage: String?
+    ) {
+        let durationMs = max(0, Int(Date().timeIntervalSince(startedAt) * 1_000))
+        let entry = NetworkDebugEntry(
+            timestamp: Date(),
+            method: method,
+            endpoint: endpoint,
+            statusCode: statusCode,
+            durationMs: durationMs,
+            errorMessage: errorMessage.map(DeveloperLogSanitizer.sanitizedText),
+            requestPreview: requestPreview,
+            responsePreview: responsePreview
+        )
+
+        Task { @MainActor in
+            NetworkDebugStore.shared.add(entry)
+            let status = statusCode.map(String.init) ?? "ERR"
+            DeveloperLogger.shared.log(.network, "\(method) \(endpoint) \(status) (\(durationMs) ms)")
+        }
     }
 }
 

@@ -6,6 +6,9 @@ struct DashboardView: View {
     @StateObject private var workLogsViewModel = WorkLogsViewModel()
     @State private var isShowingProfile = false
     @State private var isShowingAddWorkLog = false
+    @State private var isShowingDeveloperTools = false
+    @State private var developerTapCount = 0
+    @State private var lastDeveloperTapAt: Date?
 
     var body: some View {
         NavigationStack {
@@ -55,12 +58,25 @@ struct DashboardView: View {
                 AddWorkLogView()
                     .environmentObject(authManager)
             }
+            .sheet(isPresented: $isShowingDeveloperTools) {
+                DeveloperToolsView()
+                    .environmentObject(authManager)
+            }
         }
     }
 
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
             VStack(alignment: .leading, spacing: 4) {
+                Text("ContractorHoursPay")
+                    .font(.caption)
+                    .fontWeight(.semibold)
+                    .foregroundStyle(.secondary)
+                    .onTapGesture {
+                        handleDeveloperToolsTap()
+                    }
+                    .accessibilityLabel("ContractorHoursPay")
+
                 Text("Hola, \(authManager.currentUser?.name ?? "Contractor")")
                     .font(.title3)
                     .fontWeight(.semibold)
@@ -83,6 +99,23 @@ struct DashboardView: View {
             .accessibilityLabel("Perfil")
         }
         .padding(.top, 8)
+    }
+
+    private func handleDeveloperToolsTap() {
+        let now = Date()
+        if let lastDeveloperTapAt, now.timeIntervalSince(lastDeveloperTapAt) <= 1.2 {
+            developerTapCount += 1
+        } else {
+            developerTapCount = 1
+        }
+
+        lastDeveloperTapAt = now
+
+        if developerTapCount >= 5 {
+            developerTapCount = 0
+            lastDeveloperTapAt = nil
+            isShowingDeveloperTools = true
+        }
     }
 
     private var metricsGrid: some View {

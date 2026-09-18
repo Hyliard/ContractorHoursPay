@@ -13,6 +13,9 @@ struct ContractorHoursPayApp: App {
 
     init() {
         AppConfig.logDebugConfiguration()
+        Task { @MainActor in
+            DeveloperLogger.shared.log(.info, "App started")
+        }
     }
 
     var body: some Scene {
