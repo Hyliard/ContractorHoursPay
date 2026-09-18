@@ -4,16 +4,19 @@ struct ClientDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authManager: AuthManager
     @ObservedObject var clientsViewModel: ClientsViewModel
+    @StateObject private var contractsViewModel: ContractsViewModel
 
     @State private var client: Client
     @State private var isLoading = false
     @State private var isArchiving = false
     @State private var errorMessage: String?
     @State private var isShowingEdit = false
+    @State private var isShowingAddContract = false
     @State private var isShowingArchiveConfirmation = false
 
     init(client: Client, clientsViewModel: ClientsViewModel) {
         _client = State(initialValue: client)
+        _contractsViewModel = StateObject(wrappedValue: ContractsViewModel(clientId: client.id, includeInactive: true))
         self.clientsViewModel = clientsViewModel
     }
 
@@ -56,6 +59,23 @@ struct ClientDetailView: View {
             }
 
             Section {
+                contractsContent
+            } header: {
+                HStack {
+                    Text("Contracts")
+                    Spacer()
+                    if client.active {
+                        Button {
+                            isShowingAddContract = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+
+            Section {
                 Button {
                     isShowingEdit = true
                 } label: {
@@ -83,15 +103,21 @@ struct ClientDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await refresh()
+            await contractsViewModel.load(using: authManager)
         }
         .refreshable {
             await refresh()
+            await contractsViewModel.load(using: authManager)
         }
         .sheet(isPresented: $isShowingEdit) {
             EditClientView(client: client, clientsViewModel: clientsViewModel) { updatedClient in
                 client = updatedClient
             }
             .environmentObject(authManager)
+        }
+        .sheet(isPresented: $isShowingAddContract) {
+            AddContractView(contractsViewModel: contractsViewModel, preselectedClient: client)
+                .environmentObject(authManager)
         }
         .confirmationDialog(
             "¿Archivar \(client.name)?",
@@ -106,6 +132,33 @@ struct ClientDetailView: View {
             Button("Cancelar", role: .cancel) {}
         } message: {
             Text("El cliente dejará de aparecer en la lista activa, pero su información no se eliminará permanentemente.")
+        }
+    }
+
+    @ViewBuilder
+    private var contractsContent: some View {
+        if contractsViewModel.isLoading && contractsViewModel.contracts.isEmpty {
+            ProgressView()
+        } else if let errorMessage = contractsViewModel.errorMessage {
+            Text(errorMessage)
+                .foregroundStyle(.red)
+        } else if contractsViewModel.contracts.isEmpty {
+            Text(client.active ? "No hay contratos para este cliente." : "Este cliente archivado no tiene contratos.")
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(contractsViewModel.contracts) { contract in
+                NavigationLink {
+                    ContractDetailView(contract: contract, contractsViewModel: contractsViewModel)
+                } label: {
+                    ContractRowView(contract: contract)
+                }
+            }
+
+            NavigationLink {
+                ContractsView(clientId: client.id, preselectedClient: client)
+            } label: {
+                Label("Ver todos", systemImage: "doc.text.magnifyingglass")
+            }
         }
     }
 

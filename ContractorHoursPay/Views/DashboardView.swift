@@ -19,6 +19,7 @@ struct DashboardView: View {
                     UpcomingPaymentCard(payment: upcomingPayment)
                     addHoursButton
                     clientsAccess
+                    contractsAccess
                     recentActivity
                     accountSection
                     logoutButton
@@ -114,6 +115,22 @@ struct DashboardView: View {
                 subtitle: "Gestionar clientes",
                 systemImage: "person.2.fill",
                 tint: .purple
+            )
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var contractsAccess: some View {
+        NavigationLink {
+            ContractsView()
+        } label: {
+            AccountActionRow(
+                title: "Contratos",
+                subtitle: "Gestionar contratos",
+                systemImage: "doc.text.fill",
+                tint: .indigo
             )
             .padding(16)
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
