@@ -3,17 +3,20 @@ import SwiftUI
 struct ContractDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
     @ObservedObject var contractsViewModel: ContractsViewModel
+    @StateObject private var workLogsViewModel: WorkLogsViewModel
 
     @State private var contract: Contract
     @State private var isLoading = false
     @State private var isUpdatingStatus = false
     @State private var errorMessage: String?
     @State private var isShowingEdit = false
+    @State private var isShowingAddWorkLog = false
     @State private var isShowingArchiveConfirmation = false
     @State private var isShowingReactivateConfirmation = false
 
     init(contract: Contract, contractsViewModel: ContractsViewModel) {
         _contract = State(initialValue: contract)
+        _workLogsViewModel = StateObject(wrappedValue: WorkLogsViewModel(contractId: contract.id))
         self.contractsViewModel = contractsViewModel
     }
 
@@ -60,6 +63,46 @@ struct ContractDetailView: View {
                 }
             }
 
+            Section("Work Logs") {
+                if let errorMessage = workLogsViewModel.errorMessage {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
+
+                if workLogsViewModel.isLoading && workLogsViewModel.workLogs.isEmpty {
+                    ProgressView()
+                } else if workLogsViewModel.workLogs.isEmpty {
+                    Text("No hay registros para este contrato.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(workLogsViewModel.workLogs.prefix(5)) { workLog in
+                        NavigationLink {
+                            WorkLogDetailView(workLog: workLog, workLogsViewModel: workLogsViewModel)
+                        } label: {
+                            WorkLogRowView(workLog: workLog)
+                        }
+                    }
+                }
+
+                if contract.active {
+                    Button {
+                        isShowingAddWorkLog = true
+                    } label: {
+                        Label("Nuevo registro", systemImage: "plus")
+                    }
+                } else {
+                    Text("Este contrato está archivado. Podés ver registros existentes, pero no crear nuevos.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                NavigationLink {
+                    WorkLogsView(contractId: contract.id, preselectedContract: contract)
+                } label: {
+                    Label("Ver todos", systemImage: "list.bullet")
+                }
+            }
+
             Section {
                 Button {
                     isShowingEdit = true
@@ -92,15 +135,21 @@ struct ContractDetailView: View {
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await refresh()
+            await workLogsViewModel.load(using: authManager)
         }
         .refreshable {
             await refresh()
+            await workLogsViewModel.load(using: authManager)
         }
         .sheet(isPresented: $isShowingEdit) {
             EditContractView(contract: contract, contractsViewModel: contractsViewModel) { updatedContract in
                 contract = updatedContract
             }
             .environmentObject(authManager)
+        }
+        .sheet(isPresented: $isShowingAddWorkLog) {
+            AddWorkLogView(workLogsViewModel: workLogsViewModel, preselectedContract: contract)
+                .environmentObject(authManager)
         }
         .confirmationDialog("¿Archivar \(contract.name)?", isPresented: $isShowingArchiveConfirmation, titleVisibility: .visible) {
             Button("Archivar contrato", role: .destructive) {

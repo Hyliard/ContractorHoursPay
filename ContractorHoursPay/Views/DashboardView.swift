@@ -34,6 +34,7 @@ struct DashboardView: View {
             }
             .sheet(isPresented: $isShowingAddWorkLog) {
                 AddWorkLogView()
+                    .environmentObject(authManager)
             }
         }
     }
@@ -328,7 +329,7 @@ private struct UpcomingPaymentCard: View {
 }
 
 private struct RecentWorkLogRow: View {
-    let workLog: WorkLog
+    let workLog: DashboardWorkLog
 
     var body: some View {
         HStack(spacing: 12) {

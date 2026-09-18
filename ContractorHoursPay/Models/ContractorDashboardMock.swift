@@ -26,7 +26,7 @@ struct UpcomingPayment: Identifiable, Equatable {
     let status: String
 }
 
-struct WorkLog: Identifiable, Equatable {
+struct DashboardWorkLog: Identifiable, Equatable {
     let id: String
     let client: ContractorClient
     let date: Date
@@ -64,7 +64,7 @@ enum ContractorDashboardMock {
     )
 
     static let recentWorkLogs = [
-        WorkLog(
+        DashboardWorkLog(
             id: "today",
             client: clients[0],
             date: .now,
@@ -73,7 +73,7 @@ enum ContractorDashboardMock {
             currency: "USD",
             note: nil
         ),
-        WorkLog(
+        DashboardWorkLog(
             id: "yesterday",
             client: clients[0],
             date: Calendar.current.date(byAdding: .day, value: -1, to: .now) ?? .now,
@@ -82,7 +82,7 @@ enum ContractorDashboardMock {
             currency: "USD",
             note: nil
         ),
-        WorkLog(
+        DashboardWorkLog(
             id: "overtime",
             client: clients[1],
             date: Calendar.current.date(from: DateComponents(year: 2026, month: 9, day: 3)) ?? .now,
