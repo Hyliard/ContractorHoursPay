@@ -1,14 +1,55 @@
 import Foundation
 
-enum Config {
-    /// En el Simulador de iOS, "localhost" apunta directo a tu Mac, así que
-    /// esta URL funciona mientras corras la API con `npm run dev`.
-    ///
-    /// Si probás en un dispositivo físico (iPhone real), "localhost" ya no
-    /// sirve porque apuntaría al propio dispositivo. Reemplazá esto por la
-    /// IP de tu Mac en la red local, por ejemplo:
-    ///   static let baseURL = URL(string: "http://192.168.1.50:3000")!
-    /// y agregá una excepción de App Transport Security en Info.plist para
-    /// ese dominio, ya que no es HTTPS.
-    static let baseURL = URL(string: "http://100.87.169.91:3004")!
+enum AppConfig {
+    static var environmentName: String {
+        configuredValue(for: "APIEnvironment", environmentKey: "API_ENVIRONMENT") ?? "Unknown"
+    }
+
+    static var baseURL: URL {
+        let value = configuredValue(for: "APIBaseURL", environmentKey: "API_BASE_URL") ?? ""
+        guard let url = URL(string: value), url.scheme != nil, url.host != nil else {
+            preconditionFailure("APIBaseURL is missing or invalid. Received: \(value.isEmpty ? "<empty>" : value)")
+        }
+        return url
+    }
+
+    static func logDebugConfiguration() {
+        #if DEBUG
+        let environment = configuredValue(for: "APIEnvironment", environmentKey: "API_ENVIRONMENT")
+        let baseURLValue = configuredValue(for: "APIBaseURL", environmentKey: "API_BASE_URL")
+        print("[API] Environment: \(environment ?? "Missing")")
+        print("[API] Base URL: \(baseURLValue ?? "Missing")")
+        #endif
+    }
+
+    private static func configuredValue(for infoKey: String, environmentKey: String) -> String? {
+        if let value = Bundle.main.object(forInfoDictionaryKey: infoKey) as? String,
+           isResolved(value) {
+            return value
+        }
+
+        #if DEBUG
+        if let value = ProcessInfo.processInfo.environment[environmentKey],
+           isResolved(value) {
+            return value
+        }
+
+        if ProcessInfo.processInfo.environment["XCODE_RUNNING_FOR_PREVIEWS"] == "1" {
+            switch infoKey {
+            case "APIBaseURL":
+                return "http://localhost:3000"
+            case "APIEnvironment":
+                return "Preview"
+            default:
+                return nil
+            }
+        }
+        #endif
+
+        return nil
+    }
+
+    private static func isResolved(_ value: String) -> Bool {
+        !value.isEmpty && !value.hasPrefix("$(")
+    }
 }

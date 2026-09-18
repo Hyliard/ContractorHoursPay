@@ -11,6 +11,10 @@ import SwiftUI
 struct ContractorHoursPayApp: App {
     @StateObject private var authManager = AuthManager()
 
+    init() {
+        AppConfig.logDebugConfiguration()
+    }
+
     var body: some Scene {
         WindowGroup {
             RootView()

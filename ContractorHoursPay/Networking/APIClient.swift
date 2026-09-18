@@ -115,7 +115,7 @@ struct APIClient {
     }
 
     private func makeRequest(method: HTTPMethod, path: String, token: String?) -> URLRequest? {
-        let url = Config.baseURL.appendingPathComponent(path)
+        let url = AppConfig.baseURL.appendingPathComponent(path)
         var request = URLRequest(url: url)
         request.httpMethod = method.rawValue
         request.setValue("application/json", forHTTPHeaderField: "Content-Type")

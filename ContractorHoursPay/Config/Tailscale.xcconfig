@@ -1,0 +1,3 @@
+SLASH = /
+API_BASE_URL = http:$(SLASH)$(SLASH)hyliard-pi.tail7109d6.ts.net:3004
+API_ENVIRONMENT = Tailscale
