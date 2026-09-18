@@ -66,6 +66,42 @@ struct APIClient {
         try await sendRaw(method: method, path: path, body: body, token: token)
     }
 
+    // MARK: - Bytes sin decodificar
+
+    func sendData(
+        method: HTTPMethod,
+        path: String,
+        token: String? = nil
+    ) async throws -> Data {
+        try await sendRaw(method: method, path: path, body: Optional<EmptyBody>.none, token: token)
+    }
+
+    // MARK: - Multipart
+
+    func sendMultipart<Response: Decodable>(
+        path: String,
+        fieldName: String,
+        fileName: String,
+        mimeType: String,
+        data: Data,
+        token: String? = nil
+    ) async throws -> Response {
+        let boundary = "Boundary-\(UUID().uuidString)"
+        guard var request = makeRequest(method: .post, path: path, token: token, contentType: "multipart/form-data; boundary=\(boundary)") else {
+            throw APIError.invalidURL
+        }
+        request.httpBody = multipartBody(
+            boundary: boundary,
+            fieldName: fieldName,
+            fileName: fileName,
+            mimeType: mimeType,
+            data: data
+        )
+
+        let responseData = try await send(request)
+        return try decode(responseData)
+    }
+
     // MARK: - Privados
 
     private func decode<Response: Decodable>(_ data: Data) throws -> Response {
@@ -90,6 +126,10 @@ struct APIClient {
             request.httpBody = try JSONEncoder().encode(body)
         }
 
+        return try await send(request)
+    }
+
+    private func send(_ request: URLRequest) async throws -> Data {
         let data: Data
         let response: URLResponse
         do {
@@ -138,5 +178,29 @@ struct APIClient {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }
         return request
+    }
+
+    private func multipartBody(
+        boundary: String,
+        fieldName: String,
+        fileName: String,
+        mimeType: String,
+        data: Data
+    ) -> Data {
+        var body = Data()
+        body.append("--\(boundary)\r\n")
+        body.append("Content-Disposition: form-data; name=\"\(fieldName)\"; filename=\"\(fileName)\"\r\n")
+        body.append("Content-Type: \(mimeType)\r\n\r\n")
+        body.append(data)
+        body.append("\r\n--\(boundary)--\r\n")
+        return body
+    }
+}
+
+private extension Data {
+    mutating func append(_ string: String) {
+        if let data = string.data(using: .utf8) {
+            append(data)
+        }
     }
 }

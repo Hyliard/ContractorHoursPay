@@ -77,10 +77,8 @@ struct DashboardView: View {
             Button {
                 isShowingProfile = true
             } label: {
-                Image(systemName: "person.crop.circle.fill")
-                    .font(.system(size: 34))
-                    .foregroundStyle(.blue)
-                    .accessibilityLabel("Perfil")
+                UserAvatarView(user: authManager.currentUser, size: 38)
+                    .environmentObject(authManager)
             }
             .accessibilityLabel("Perfil")
         }
