@@ -3,6 +3,7 @@ import Foundation
 enum HTTPMethod: String {
     case get = "GET"
     case post = "POST"
+    case patch = "PATCH"
     case delete = "DELETE"
 }
 
@@ -114,11 +115,25 @@ struct APIClient {
         return data
     }
 
-    private func makeRequest(method: HTTPMethod, path: String, token: String?) -> URLRequest? {
-        let url = AppConfig.baseURL.appendingPathComponent(path)
-        var request = URLRequest(url: url)
+    private func makeRequest(method: HTTPMethod, path: String, token: String?, contentType: String = "application/json") -> URLRequest? {
+        let parts = path.split(separator: "?", maxSplits: 1, omittingEmptySubsequences: false)
+        let url = AppConfig.baseURL.appendingPathComponent(String(parts[0]))
+        let finalURL: URL
+
+        if parts.count == 2 {
+            var components = URLComponents(url: url, resolvingAgainstBaseURL: false)
+            components?.percentEncodedQuery = String(parts[1])
+            guard let urlWithQuery = components?.url else {
+                return nil
+            }
+            finalURL = urlWithQuery
+        } else {
+            finalURL = url
+        }
+
+        var request = URLRequest(url: finalURL)
         request.httpMethod = method.rawValue
-        request.setValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.setValue(contentType, forHTTPHeaderField: "Content-Type")
         if let token {
             request.setValue("Bearer \(token)", forHTTPHeaderField: "Authorization")
         }

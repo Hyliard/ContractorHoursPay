@@ -18,6 +18,7 @@ struct DashboardView: View {
                     metricsGrid
                     UpcomingPaymentCard(payment: upcomingPayment)
                     addHoursButton
+                    clientsAccess
                     recentActivity
                     accountSection
                     logoutButton
@@ -102,6 +103,22 @@ struct DashboardView: View {
         }
         .buttonStyle(.plain)
         .accessibilityHint("Abre el formulario para registrar horas trabajadas")
+    }
+
+    private var clientsAccess: some View {
+        NavigationLink {
+            ClientsView()
+        } label: {
+            AccountActionRow(
+                title: "Clientes",
+                subtitle: "Gestionar clientes",
+                systemImage: "person.2.fill",
+                tint: .purple
+            )
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
     }
 
     private var recentActivity: some View {
