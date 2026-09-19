@@ -62,7 +62,7 @@ struct InvoiceDetailView: View {
                         .foregroundStyle(.secondary)
                 } else {
                     ForEach(invoice.workLogs) { workLog in
-                        WorkLogRowView(workLog: workLog)
+                        InvoiceWorkLogRow(workLog: workLog)
                     }
                 }
             }
@@ -241,5 +241,47 @@ struct InvoiceDetailView: View {
         } catch {
             errorMessage = userFacingInvoiceError(error)
         }
+    }
+}
+
+private struct InvoiceWorkLogRow: View {
+    let workLog: InvoiceWorkLogSummary
+
+    var body: some View {
+        HStack(spacing: 12) {
+            Image(systemName: workLog.isOvertime ? "clock.badge.exclamationmark" : "clock")
+                .font(.subheadline)
+                .foregroundStyle(workLog.isOvertime ? .orange : .secondary)
+                .frame(width: 32, height: 32)
+                .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(workLog.workDate.formatted(.dateTime.day().month().year()))
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                if let note = workLog.note, !note.isEmpty {
+                    Text(note)
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                        .lineLimit(2)
+                }
+            }
+
+            Spacer()
+
+            VStack(alignment: .trailing, spacing: 3) {
+                Text("\(workLog.hours) h")
+                    .font(.subheadline)
+                    .fontWeight(.semibold)
+
+                if workLog.isOvertime {
+                    Text("Overtime")
+                        .font(.caption2)
+                        .foregroundStyle(.orange)
+                }
+            }
+        }
+        .padding(.vertical, 6)
     }
 }

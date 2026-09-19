@@ -2,11 +2,13 @@ import Foundation
 
 struct PaymentInvoiceSummary: Codable, Identifiable, Equatable {
     let id: String
+    let number: String?
     let subtotal: String
-    let paidAmount: String
-    let outstandingAmount: String
+    let currency: String
     let status: InvoiceStatus
-    let effectiveStatus: InvoiceStatus
+    let paidAmount: String?
+    let outstandingAmount: String?
+    let effectiveStatus: InvoiceStatus?
 }
 
 struct PaymentClientSummary: Codable, Identifiable, Equatable {

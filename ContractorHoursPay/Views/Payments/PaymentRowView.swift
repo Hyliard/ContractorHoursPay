@@ -27,7 +27,7 @@ struct PaymentRowView: View {
 
             Spacer()
 
-            Text(payment.active ? payment.invoice.effectiveStatus.title : "Archived")
+            Text(payment.active ? invoiceStatusTitle : "Archived")
                 .font(.caption)
                 .fontWeight(.medium)
                 .padding(.horizontal, 8)
@@ -36,5 +36,9 @@ struct PaymentRowView: View {
                 .foregroundStyle(payment.active ? .green : .secondary)
         }
         .padding(.vertical, 6)
+    }
+
+    private var invoiceStatusTitle: String {
+        (payment.invoice.effectiveStatus ?? payment.invoice.status).title
     }
 }

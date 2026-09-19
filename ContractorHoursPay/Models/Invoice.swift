@@ -69,6 +69,37 @@ struct InvoicePaymentSummary: Codable, Identifiable, Equatable {
     }
 }
 
+struct InvoiceWorkLogSummary: Codable, Identifiable, Equatable {
+    let id: String
+    let contractId: String
+    let workDate: Date
+    let hours: String
+    let isOvertime: Bool
+    let note: String?
+    let active: Bool
+
+    init(from decoder: Decoder) throws {
+        let container = try decoder.container(keyedBy: CodingKeys.self)
+        id = try container.decode(String.self, forKey: .id)
+        contractId = try container.decode(String.self, forKey: .contractId)
+        hours = try container.decode(String.self, forKey: .hours)
+        isOvertime = try container.decode(Bool.self, forKey: .isOvertime)
+        note = try container.decodeIfPresent(String.self, forKey: .note)
+        active = try container.decodeIfPresent(Bool.self, forKey: .active) ?? true
+        workDate = try BusinessDate.decode(container.decode(String.self, forKey: .workDate))
+    }
+
+    private enum CodingKeys: String, CodingKey {
+        case id
+        case contractId
+        case workDate
+        case hours
+        case isOvertime
+        case note
+        case active
+    }
+}
+
 struct Invoice: Codable, Identifiable, Equatable {
     let id: String
     let clientId: String
@@ -88,7 +119,7 @@ struct Invoice: Codable, Identifiable, Equatable {
     let deletedAt: Date?
     let client: InvoiceClientSummary
     let contract: InvoiceContractSummary?
-    let workLogs: [WorkLog]
+    let workLogs: [InvoiceWorkLogSummary]
     let payments: [InvoicePaymentSummary]
 
     init(from decoder: Decoder) throws {
@@ -106,7 +137,7 @@ struct Invoice: Codable, Identifiable, Equatable {
         active = try container.decode(Bool.self, forKey: .active)
         client = try container.decode(InvoiceClientSummary.self, forKey: .client)
         contract = try container.decodeIfPresent(InvoiceContractSummary.self, forKey: .contract)
-        workLogs = try container.decodeIfPresent([WorkLog].self, forKey: .workLogs) ?? []
+        workLogs = try container.decodeIfPresent([InvoiceWorkLogSummary].self, forKey: .workLogs) ?? []
         payments = try container.decodeIfPresent([InvoicePaymentSummary].self, forKey: .payments) ?? []
 
         periodFrom = try BusinessDate.decode(container.decode(String.self, forKey: .periodFrom))

@@ -41,10 +41,14 @@ struct PaymentDetailView: View {
 
             Section("Invoice") {
                 LabeledContent("Client", value: payment.client.name)
-                LabeledContent("Subtotal", value: money(payment.invoice.subtotal))
-                LabeledContent("Paid", value: money(payment.invoice.paidAmount))
-                LabeledContent("Outstanding", value: money(payment.invoice.outstandingAmount))
-                LabeledContent("Invoice Status", value: payment.invoice.effectiveStatus.title)
+                LabeledContent("Subtotal", value: invoiceMoney(payment.invoice.subtotal))
+                if let paidAmount = payment.invoice.paidAmount {
+                    LabeledContent("Paid", value: invoiceMoney(paidAmount))
+                }
+                if let outstandingAmount = payment.invoice.outstandingAmount {
+                    LabeledContent("Outstanding", value: invoiceMoney(outstandingAmount))
+                }
+                LabeledContent("Invoice Status", value: invoiceStatusTitle)
             }
 
             if let note = payment.note, !note.isEmpty {
@@ -129,6 +133,14 @@ struct PaymentDetailView: View {
 
     private func money(_ value: String) -> String {
         (decimalValue(value) ?? 0).formattedCurrency(code: payment.currency)
+    }
+
+    private func invoiceMoney(_ value: String) -> String {
+        (decimalValue(value) ?? 0).formattedCurrency(code: payment.invoice.currency)
+    }
+
+    private var invoiceStatusTitle: String {
+        (payment.invoice.effectiveStatus ?? payment.invoice.status).title
     }
 
     private func refresh() async {

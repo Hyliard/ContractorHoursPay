@@ -29,7 +29,7 @@ struct APIClient {
         token: String? = nil
     ) async throws -> Response {
         let data = try await sendRaw(method: method, path: path, body: body, token: token)
-        return try decode(data)
+        return try decode(data, method: method.rawValue, path: path)
     }
 
     // MARK: - Sin body, con respuesta decodificada
@@ -40,7 +40,7 @@ struct APIClient {
         token: String? = nil
     ) async throws -> Response {
         let data = try await sendRaw(method: method, path: path, body: Optional<EmptyBody>.none, token: token)
-        return try decode(data)
+        return try decode(data, method: method.rawValue, path: path)
     }
 
     // MARK: - Sin body, sin necesidad de leer la respuesta
@@ -102,17 +102,71 @@ struct APIClient {
             request,
             requestPreview: "<multipart form data: \(fieldName), \(mimeType), \(data.count) bytes>"
         )
-        return try decode(responseData)
+        return try decode(responseData, method: HTTPMethod.post.rawValue, path: path)
     }
 
     // MARK: - Privados
 
-    private func decode<Response: Decodable>(_ data: Data) throws -> Response {
+    private func decode<Response: Decodable>(_ data: Data, method: String, path: String) throws -> Response {
         do {
             return try JSONDecoder().decode(Response.self, from: data)
         } catch {
+            recordDecodingFailure(method: method, path: path, data: data, error: error)
             throw APIError.decoding
         }
+    }
+
+    private func recordDecodingFailure(method: String, path: String, data: Data, error: Error) {
+        let responsePreview = DeveloperLogSanitizer.sanitizedPreview(from: data)
+        let message = "Decoding failed: \(decodingErrorDescription(error))"
+        let entry = NetworkDebugEntry(
+            timestamp: Date(),
+            method: method,
+            endpoint: path,
+            statusCode: nil,
+            durationMs: 0,
+            errorMessage: DeveloperLogSanitizer.sanitizedText(message),
+            requestPreview: nil,
+            responsePreview: responsePreview
+        )
+
+        Task { @MainActor in
+            NetworkDebugStore.shared.add(entry)
+            DeveloperLogger.shared.log(.error, "\(method) \(path) \(message)")
+        }
+    }
+
+    private func decodingErrorDescription(_ error: Error) -> String {
+        guard let decodingError = error as? DecodingError else {
+            return error.localizedDescription
+        }
+
+        switch decodingError {
+        case .keyNotFound(let key, let context):
+            return "keyNotFound '\(key.stringValue)' at \(codingPath(context.codingPath)); \(context.debugDescription)"
+        case .typeMismatch(let type, let context):
+            return "typeMismatch '\(type)' at \(codingPath(context.codingPath)); \(context.debugDescription)"
+        case .valueNotFound(let type, let context):
+            return "valueNotFound '\(type)' at \(codingPath(context.codingPath)); \(context.debugDescription)"
+        case .dataCorrupted(let context):
+            return "dataCorrupted at \(codingPath(context.codingPath)); \(context.debugDescription)"
+        @unknown default:
+            return decodingError.localizedDescription
+        }
+    }
+
+    private func codingPath(_ path: [CodingKey]) -> String {
+        if path.isEmpty {
+            return "<root>"
+        }
+
+        return path.map { key in
+            if let intValue = key.intValue {
+                return "[\(intValue)]"
+            }
+            return key.stringValue
+        }
+        .joined(separator: ".")
     }
 
     private func sendRaw<Body: Encodable>(
