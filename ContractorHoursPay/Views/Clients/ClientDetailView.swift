@@ -5,6 +5,7 @@ struct ClientDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
     @ObservedObject var clientsViewModel: ClientsViewModel
     @StateObject private var contractsViewModel: ContractsViewModel
+    @StateObject private var invoicesViewModel: InvoicesViewModel
 
     @State private var client: Client
     @State private var isLoading = false
@@ -12,11 +13,13 @@ struct ClientDetailView: View {
     @State private var errorMessage: String?
     @State private var isShowingEdit = false
     @State private var isShowingAddContract = false
+    @State private var isShowingAddInvoice = false
     @State private var isShowingArchiveConfirmation = false
 
     init(client: Client, clientsViewModel: ClientsViewModel) {
         _client = State(initialValue: client)
         _contractsViewModel = StateObject(wrappedValue: ContractsViewModel(clientId: client.id, includeInactive: true))
+        _invoicesViewModel = StateObject(wrappedValue: InvoicesViewModel(clientId: client.id, includeInactive: true))
         self.clientsViewModel = clientsViewModel
     }
 
@@ -76,6 +79,23 @@ struct ClientDetailView: View {
             }
 
             Section {
+                invoicesContent
+            } header: {
+                HStack {
+                    Text("Invoices")
+                    Spacer()
+                    if client.active {
+                        Button {
+                            isShowingAddInvoice = true
+                        } label: {
+                            Image(systemName: "plus")
+                        }
+                        .buttonStyle(.borderless)
+                    }
+                }
+            }
+
+            Section {
                 Button {
                     isShowingEdit = true
                 } label: {
@@ -104,10 +124,12 @@ struct ClientDetailView: View {
         .task {
             await refresh()
             await contractsViewModel.load(using: authManager)
+            await invoicesViewModel.load(using: authManager)
         }
         .refreshable {
             await refresh()
             await contractsViewModel.load(using: authManager)
+            await invoicesViewModel.load(using: authManager)
         }
         .sheet(isPresented: $isShowingEdit) {
             EditClientView(client: client, clientsViewModel: clientsViewModel) { updatedClient in
@@ -117,6 +139,12 @@ struct ClientDetailView: View {
         }
         .sheet(isPresented: $isShowingAddContract) {
             AddContractView(contractsViewModel: contractsViewModel, preselectedClient: client)
+                .environmentObject(authManager)
+        }
+        .sheet(isPresented: $isShowingAddInvoice, onDismiss: {
+            Task { await invoicesViewModel.load(using: authManager) }
+        }) {
+            AddInvoiceView(invoicesViewModel: invoicesViewModel, preselectedClient: client, preselectedContract: nil)
                 .environmentObject(authManager)
         }
         .confirmationDialog(
@@ -158,6 +186,33 @@ struct ClientDetailView: View {
                 ContractsView(clientId: client.id, preselectedClient: client)
             } label: {
                 Label("Ver todos", systemImage: "doc.text.magnifyingglass")
+            }
+        }
+    }
+
+    @ViewBuilder
+    private var invoicesContent: some View {
+        if invoicesViewModel.isLoading && invoicesViewModel.invoices.isEmpty {
+            ProgressView()
+        } else if let errorMessage = invoicesViewModel.errorMessage {
+            Text(errorMessage)
+                .foregroundStyle(.red)
+        } else if invoicesViewModel.invoices.isEmpty {
+            Text(client.active ? "No hay facturas para este cliente." : "Este cliente archivado no tiene facturas.")
+                .foregroundStyle(.secondary)
+        } else {
+            ForEach(invoicesViewModel.invoices.prefix(5)) { invoice in
+                NavigationLink {
+                    InvoiceDetailView(invoice: invoice, invoicesViewModel: invoicesViewModel)
+                } label: {
+                    InvoiceRowView(invoice: invoice)
+                }
+            }
+
+            NavigationLink {
+                InvoicesView(clientId: client.id, preselectedClient: client)
+            } label: {
+                Label("Ver todas", systemImage: "doc.text.magnifyingglass")
             }
         }
     }

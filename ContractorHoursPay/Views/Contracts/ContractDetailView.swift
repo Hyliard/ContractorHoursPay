@@ -4,6 +4,7 @@ struct ContractDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
     @ObservedObject var contractsViewModel: ContractsViewModel
     @StateObject private var workLogsViewModel: WorkLogsViewModel
+    @StateObject private var invoicesViewModel: InvoicesViewModel
 
     @State private var contract: Contract
     @State private var isLoading = false
@@ -11,12 +12,14 @@ struct ContractDetailView: View {
     @State private var errorMessage: String?
     @State private var isShowingEdit = false
     @State private var isShowingAddWorkLog = false
+    @State private var isShowingAddInvoice = false
     @State private var isShowingArchiveConfirmation = false
     @State private var isShowingReactivateConfirmation = false
 
     init(contract: Contract, contractsViewModel: ContractsViewModel) {
         _contract = State(initialValue: contract)
         _workLogsViewModel = StateObject(wrappedValue: WorkLogsViewModel(contractId: contract.id))
+        _invoicesViewModel = StateObject(wrappedValue: InvoicesViewModel(contractId: contract.id, includeInactive: true))
         self.contractsViewModel = contractsViewModel
     }
 
@@ -103,6 +106,46 @@ struct ContractDetailView: View {
                 }
             }
 
+            Section("Invoices") {
+                if let errorMessage = invoicesViewModel.errorMessage {
+                    Text(errorMessage)
+                        .foregroundStyle(.red)
+                }
+
+                if invoicesViewModel.isLoading && invoicesViewModel.invoices.isEmpty {
+                    ProgressView()
+                } else if invoicesViewModel.invoices.isEmpty {
+                    Text("No hay facturas para este contrato.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(invoicesViewModel.invoices.prefix(5)) { invoice in
+                        NavigationLink {
+                            InvoiceDetailView(invoice: invoice, invoicesViewModel: invoicesViewModel)
+                        } label: {
+                            InvoiceRowView(invoice: invoice)
+                        }
+                    }
+                }
+
+                if contract.active {
+                    Button {
+                        isShowingAddInvoice = true
+                    } label: {
+                        Label("Nueva factura", systemImage: "plus")
+                    }
+                } else {
+                    Text("Este contrato está archivado. Podés ver facturas existentes, pero no crear nuevas.")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
+                }
+
+                NavigationLink {
+                    InvoicesView(contractId: contract.id, preselectedContract: contract)
+                } label: {
+                    Label("Ver todas", systemImage: "doc.text.magnifyingglass")
+                }
+            }
+
             Section {
                 Button {
                     isShowingEdit = true
@@ -136,10 +179,12 @@ struct ContractDetailView: View {
         .task {
             await refresh()
             await workLogsViewModel.load(using: authManager)
+            await invoicesViewModel.load(using: authManager)
         }
         .refreshable {
             await refresh()
             await workLogsViewModel.load(using: authManager)
+            await invoicesViewModel.load(using: authManager)
         }
         .sheet(isPresented: $isShowingEdit) {
             EditContractView(contract: contract, contractsViewModel: contractsViewModel) { updatedContract in
@@ -149,6 +194,12 @@ struct ContractDetailView: View {
         }
         .sheet(isPresented: $isShowingAddWorkLog) {
             AddWorkLogView(workLogsViewModel: workLogsViewModel, preselectedContract: contract)
+                .environmentObject(authManager)
+        }
+        .sheet(isPresented: $isShowingAddInvoice, onDismiss: {
+            Task { await invoicesViewModel.load(using: authManager) }
+        }) {
+            AddInvoiceView(invoicesViewModel: invoicesViewModel, preselectedClient: nil, preselectedContract: contract)
                 .environmentObject(authManager)
         }
         .confirmationDialog("¿Archivar \(contract.name)?", isPresented: $isShowingArchiveConfirmation, titleVisibility: .visible) {

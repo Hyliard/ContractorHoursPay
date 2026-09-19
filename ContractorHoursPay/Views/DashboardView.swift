@@ -20,12 +20,15 @@ struct DashboardView: View {
                     }
                     IncomeSummaryCard(summaries: viewModel.summariesByCurrency, totalHours: viewModel.totalHours)
                     metricsGrid
+                    nextDueSection
                     addHoursButton
                     if !viewModel.isLoading && viewModel.monthlyWorkLogs.isEmpty && viewModel.errorMessage == nil {
                         emptyState
                     }
                     clientsAccess
                     contractsAccess
+                    invoicesAccess
+                    paymentsAccess
                     recentActivity
                     accountSection
                     logoutButton
@@ -121,32 +124,71 @@ struct DashboardView: View {
     private var metricsGrid: some View {
         LazyVGrid(columns: [GridItem(.adaptive(minimum: 102), spacing: 12)], spacing: 12) {
             MetricCard(
-                title: "Horas",
-                value: "\(viewModel.totalHours.formattedHours) h",
-                systemImage: "clock.fill",
+                title: "Generado",
+                value: formattedGenerated,
+                systemImage: "chart.line.uptrend.xyaxis",
                 tint: .blue
             )
 
             MetricCard(
-                title: "Overtime",
-                value: "\(viewModel.overtimeHours.formattedHours) h",
-                systemImage: "clock.badge.exclamationmark.fill",
+                title: "Pendiente",
+                value: formattedCurrencyGroups(viewModel.pendingSummaries),
+                systemImage: "hourglass",
                 tint: .orange
             )
 
             MetricCard(
-                title: "Registros",
-                value: "\(viewModel.workLogCount)",
-                systemImage: "list.bullet.rectangle.fill",
+                title: "Cobrado",
+                value: formattedCurrencyGroups(viewModel.paidSummaries),
+                systemImage: "checkmark.seal.fill",
                 tint: .green
             )
 
             MetricCard(
-                title: "Contratos",
-                value: "\(viewModel.workedContractCount)",
-                systemImage: "doc.text.fill",
-                tint: .indigo
+                title: "Vencido",
+                value: formattedCurrencyGroups(viewModel.overdueSummaries),
+                systemImage: "exclamationmark.triangle.fill",
+                tint: .red
             )
+        }
+    }
+
+    private var formattedGenerated: String {
+        formattedCurrencyGroups(
+            viewModel.summariesByCurrency.map {
+                CurrencyAmountSummary(currency: $0.currency, amount: $0.estimatedIncome)
+            }
+        )
+    }
+
+    @ViewBuilder
+    private var nextDueSection: some View {
+        if let invoice = viewModel.nextDueInvoice {
+            DashboardSection(title: "Próximo vencimiento") {
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(alignment: .firstTextBaseline) {
+                        Text(invoice.client.name)
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                        Spacer()
+                        Text((decimalValue(invoice.outstandingAmount) ?? 0).formattedCurrency(code: invoice.currency))
+                            .font(.subheadline)
+                            .fontWeight(.semibold)
+                    }
+
+                    if let contract = invoice.contract {
+                        Text(contract.name)
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+
+                    if let dueDate = invoice.dueDate {
+                        Text("Vence \(dueDate.formatted(.dateTime.day().month().year()))")
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
+                    }
+                }
+            }
         }
     }
 
@@ -190,6 +232,38 @@ struct DashboardView: View {
                 subtitle: "Gestionar contratos",
                 systemImage: "doc.text.fill",
                 tint: .indigo
+            )
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var invoicesAccess: some View {
+        NavigationLink {
+            InvoicesView()
+        } label: {
+            AccountActionRow(
+                title: "Facturas",
+                subtitle: "Gestionar facturación",
+                systemImage: "doc.plaintext.fill",
+                tint: .teal
+            )
+            .padding(16)
+            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+        }
+        .buttonStyle(.plain)
+    }
+
+    private var paymentsAccess: some View {
+        NavigationLink {
+            PaymentsView()
+        } label: {
+            AccountActionRow(
+                title: "Pagos",
+                subtitle: "Registrar cobros",
+                systemImage: "banknote.fill",
+                tint: .green
             )
             .padding(16)
             .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
@@ -395,11 +469,11 @@ private struct MetricCard: View {
                     .font(.headline)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
-                    .lineLimit(1)
+                    .lineLimit(3)
                     .minimumScaleFactor(0.78)
             }
         }
-        .frame(maxWidth: .infinity, minHeight: 96, alignment: .leading)
+        .frame(maxWidth: .infinity, minHeight: 112, alignment: .leading)
         .padding(14)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
@@ -505,25 +579,6 @@ private struct DashboardSection<Content: View>: View {
                 .padding(16)
                 .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
         }
-    }
-}
-
-private extension Decimal {
-    var formattedHours: String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .decimal
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSDecimalNumber(decimal: self)) ?? "0"
-    }
-
-    func formattedCurrency(code: String) -> String {
-        let formatter = NumberFormatter()
-        formatter.numberStyle = .currency
-        formatter.currencyCode = code
-        formatter.minimumFractionDigits = 0
-        formatter.maximumFractionDigits = 2
-        return formatter.string(from: NSDecimalNumber(decimal: self)) ?? "\(code) 0"
     }
 }
 
