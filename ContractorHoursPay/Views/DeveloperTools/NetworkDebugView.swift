@@ -6,7 +6,7 @@ struct NetworkDebugView: View {
     var body: some View {
         List {
             if store.entries.isEmpty {
-                ContentUnavailableView("No network logs", systemImage: "network.slash")
+                ContentUnavailableView("No hay logs de red", systemImage: "network.slash")
             } else {
                 ForEach(store.entries) { entry in
                     NavigationLink {
@@ -17,10 +17,10 @@ struct NetworkDebugView: View {
                 }
             }
         }
-        .navigationTitle("Network Debug")
+        .navigationTitle("Depuración de red")
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
-                Button("Clear") {
+                Button("Limpiar") {
                     store.clear()
                 }
                 .disabled(store.entries.isEmpty)
@@ -91,12 +91,12 @@ private struct NetworkDebugDetailView: View {
 
     var body: some View {
         List {
-            Section("Summary") {
-                LabeledContent("Method", value: entry.method)
+            Section("Resumen") {
+                LabeledContent("Método", value: entry.method)
                 LabeledContent("Endpoint", value: entry.endpoint)
-                LabeledContent("Status", value: entry.statusText)
-                LabeledContent("Duration", value: "\(entry.durationMs) ms")
-                LabeledContent("Timestamp", value: entry.timestamp.formatted(.dateTime.year().month().day().hour().minute().second()))
+                LabeledContent("Estado", value: entry.statusText)
+                LabeledContent("Duración", value: "\(entry.durationMs) ms")
+                LabeledContent("Fecha y hora", value: entry.timestamp.formatted(.dateTime.year().month().day().hour().minute().second()))
             }
 
             if let errorMessage = entry.errorMessage {
@@ -106,14 +106,14 @@ private struct NetworkDebugDetailView: View {
                 }
             }
 
-            Section("Request Preview") {
-                Text(entry.requestPreview ?? "N/A")
+            Section("Vista previa del request") {
+                Text(entry.requestPreview ?? "N/D")
                     .font(.system(.footnote, design: .monospaced))
                     .textSelection(.enabled)
             }
 
-            Section("Response Preview") {
-                Text(entry.responsePreview ?? "N/A")
+            Section("Vista previa de la respuesta") {
+                Text(entry.responsePreview ?? "N/D")
                     .font(.system(.footnote, design: .monospaced))
                     .textSelection(.enabled)
             }

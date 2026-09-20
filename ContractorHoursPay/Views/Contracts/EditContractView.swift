@@ -63,7 +63,7 @@ struct EditContractView: View {
                         }
                     }
 
-                    TextField("Overtime opcional", text: $overtimeRate)
+                    TextField("Horas extra opcional", text: $overtimeRate)
                         .keyboardType(.decimalPad)
 
                     Toggle("Activo", isOn: $active)
@@ -119,9 +119,10 @@ struct EditContractView: View {
     }
 
     private var canSave: Bool {
-        !selectedClientId.isEmpty
+        let normalizedHourlyRate = normalizedRate(hourlyRate)
+        return !selectedClientId.isEmpty
             && !name.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty
-            && isValidPositiveDecimal(hourlyRate)
+            && isValidPositiveDecimal(normalizedHourlyRate)
             && !isLoading
     }
 

@@ -49,7 +49,7 @@ struct WorkLogRowView: View {
     }
 
     private var statusText: String {
-        workLog.active ? (workLog.isOvertime ? "Overtime" : "Activo") : "Archivado"
+        workLog.active ? (workLog.isOvertime ? "Horas extra" : "Activo") : "Archivado"
     }
 
     private var statusColor: Color {

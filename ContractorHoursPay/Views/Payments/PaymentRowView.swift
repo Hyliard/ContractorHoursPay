@@ -27,7 +27,7 @@ struct PaymentRowView: View {
 
             Spacer()
 
-            Text(payment.active ? invoiceStatusTitle : "Archived")
+            Text(payment.active ? invoiceStatusTitle : "Archivado")
                 .font(.caption)
                 .fontWeight(.medium)
                 .padding(.horizontal, 8)

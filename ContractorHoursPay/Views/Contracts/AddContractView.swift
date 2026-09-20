@@ -46,7 +46,7 @@ struct AddContractView: View {
                         }
                     }
 
-                    TextField("Overtime opcional", text: $overtimeRate)
+                    TextField("Horas extra opcional", text: $overtimeRate)
                         .keyboardType(.decimalPad)
                 }
 

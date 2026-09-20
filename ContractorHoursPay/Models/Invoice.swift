@@ -11,11 +11,11 @@ enum InvoiceStatus: String, Codable, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .draft: "Draft"
-        case .pending: "Pending"
-        case .paid: "Paid"
-        case .cancelled: "Cancelled"
-        case .overdue: "Overdue"
+        case .draft: "Borrador"
+        case .pending: "Pendiente"
+        case .paid: "Pagada"
+        case .cancelled: "Cancelada"
+        case .overdue: "Vencida"
         }
     }
 }

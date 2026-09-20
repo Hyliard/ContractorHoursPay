@@ -29,30 +29,30 @@ struct PaymentDetailView: View {
                 }
             }
 
-            Section("Payment") {
-                LabeledContent("Amount", value: money(payment.amount))
-                LabeledContent("Currency", value: payment.currency)
-                LabeledContent("Paid At", value: payment.paidAt.formatted(.dateTime.day().month().year()))
+            Section("Pago") {
+                LabeledContent("Monto", value: money(payment.amount))
+                LabeledContent("Moneda", value: payment.currency)
+                LabeledContent("Fecha de pago", value: payment.paidAt.formatted(.dateTime.day().month().year()))
                 if let method = payment.method, !method.isEmpty {
-                    LabeledContent("Method", value: method)
+                    LabeledContent("Método", value: method)
                 }
                 statusRow
             }
 
-            Section("Invoice") {
-                LabeledContent("Client", value: payment.client.name)
+            Section("Factura") {
+                LabeledContent("Cliente", value: payment.client.name)
                 LabeledContent("Subtotal", value: invoiceMoney(payment.invoice.subtotal))
                 if let paidAmount = payment.invoice.paidAmount {
-                    LabeledContent("Paid", value: invoiceMoney(paidAmount))
+                    LabeledContent("Cobrado", value: invoiceMoney(paidAmount))
                 }
                 if let outstandingAmount = payment.invoice.outstandingAmount {
-                    LabeledContent("Outstanding", value: invoiceMoney(outstandingAmount))
+                    LabeledContent("Saldo pendiente", value: invoiceMoney(outstandingAmount))
                 }
-                LabeledContent("Invoice Status", value: invoiceStatusTitle)
+                LabeledContent("Estado de la factura", value: invoiceStatusTitle)
             }
 
             if let note = payment.note, !note.isEmpty {
-                Section("Note") {
+                Section("Nota") {
                     Text(note)
                 }
             }
@@ -61,7 +61,7 @@ struct PaymentDetailView: View {
                 Button {
                     isShowingEdit = true
                 } label: {
-                    Label("Edit", systemImage: "square.and.pencil")
+                    Label("Editar", systemImage: "square.and.pencil")
                 }
                 .disabled(!payment.active)
 
@@ -75,7 +75,7 @@ struct PaymentDetailView: View {
                     if isUpdatingStatus {
                         ProgressView()
                     } else {
-                        Label(payment.active ? "Archive Payment" : "Reactivate Payment", systemImage: payment.active ? "archivebox" : "arrow.uturn.backward.circle")
+                        Label(payment.active ? "Archivar pago" : "Reactivar pago", systemImage: payment.active ? "archivebox" : "arrow.uturn.backward.circle")
                     }
                 }
                 .disabled(isUpdatingStatus)
@@ -86,7 +86,7 @@ struct PaymentDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle("Payment")
+        .navigationTitle("Pago")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await refresh()
@@ -101,27 +101,27 @@ struct PaymentDetailView: View {
             }
             .environmentObject(authManager)
         }
-        .confirmationDialog("Archive Payment?", isPresented: $isShowingArchiveConfirmation, titleVisibility: .visible) {
-            Button("Archive Payment", role: .destructive) {
+        .confirmationDialog("¿Archivar pago?", isPresented: $isShowingArchiveConfirmation, titleVisibility: .visible) {
+            Button("Archivar pago", role: .destructive) {
                 Task { await archive() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("The payment will be hidden from active lists, but it will not be permanently deleted.")
+            Text("El pago dejará de aparecer en las listas activas, pero no se eliminará permanentemente.")
         }
-        .confirmationDialog("Reactivate Payment?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
-            Button("Reactivate Payment") {
+        .confirmationDialog("¿Reactivar pago?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
+            Button("Reactivar pago") {
                 Task { await reactivate() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancelar", role: .cancel) {}
         }
     }
 
     private var statusRow: some View {
         HStack {
-            Text("Status")
+            Text("Estado")
             Spacer()
-            Text(payment.active ? "Active" : "Archived")
+            Text(payment.active ? "Activo" : "Archivado")
                 .font(.caption)
                 .fontWeight(.medium)
                 .padding(.horizontal, 8)

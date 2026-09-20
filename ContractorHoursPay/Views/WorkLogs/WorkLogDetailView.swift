@@ -50,7 +50,7 @@ struct WorkLogDetailView: View {
                     LabeledContent("Empresa", value: company)
                 }
                 LabeledContent("Tarifa", value: "\(workLog.contract.hourlyRate) \(workLog.contract.currency)/h")
-                LabeledContent("Overtime", value: workLog.isOvertime ? "Sí" : "No")
+                LabeledContent("Horas extra", value: workLog.isOvertime ? "Sí" : "No")
                 if let note = workLog.note, !note.isEmpty {
                     LabeledContent("Nota", value: note)
                 }
@@ -132,7 +132,7 @@ struct WorkLogDetailView: View {
     }
 
     private var overtimeBadge: some View {
-        Text("Overtime")
+        Text("Horas extra")
             .font(.caption)
             .fontWeight(.medium)
             .padding(.horizontal, 8)

@@ -24,7 +24,7 @@ enum WorkLogOvertimeFilter: String, CaseIterable, Identifiable {
         case .all:
             return "Todos"
         case .overtime:
-            return "Overtime"
+            return "Horas extra"
         case .regular:
             return "Regular"
         }

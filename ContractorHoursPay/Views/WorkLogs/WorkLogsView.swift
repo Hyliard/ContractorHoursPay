@@ -83,7 +83,7 @@ struct WorkLogsView: View {
 
     private var filtersSection: some View {
         Section("Filtros") {
-            Picker("Overtime", selection: $viewModel.overtimeFilter) {
+            Picker("Horas extra", selection: $viewModel.overtimeFilter) {
                 ForEach(WorkLogOvertimeFilter.allCases) { filter in
                     Text(filter.title).tag(filter)
                 }

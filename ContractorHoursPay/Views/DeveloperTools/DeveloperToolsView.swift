@@ -16,21 +16,21 @@ struct DeveloperToolsView: View {
     var body: some View {
         NavigationStack {
             List {
-                Section("Network") {
+                Section("Red") {
                     NavigationLink {
                         NetworkDebugView()
                     } label: {
-                        Label("Network Debug", systemImage: "network")
+                        Label("Depuración de red", systemImage: "network")
                     }
                 }
 
                 Section("Backend") {
-                    LabeledContent("API Health", value: healthStatus.title)
+                    LabeledContent("Estado de API", value: healthStatus.title)
                     LabeledContent("Base URL", value: AppConfig.baseURL.absoluteString)
-                    LabeledContent("Latency", value: healthLatencyText)
+                    LabeledContent("Latencia", value: healthLatencyText)
 
                     if let healthCheckedAt {
-                        LabeledContent("Last Test", value: healthCheckedAt.formatted(.dateTime.hour().minute().second()))
+                        LabeledContent("Última prueba", value: healthCheckedAt.formatted(.dateTime.hour().minute().second()))
                     }
 
                     if let healthError {
@@ -47,42 +47,42 @@ struct DeveloperToolsView: View {
                         if isTestingHealth {
                             ProgressView()
                         } else {
-                            Label("Test API Health", systemImage: "stethoscope")
+                            Label("Probar estado de API", systemImage: "stethoscope")
                         }
                     }
                     .disabled(isTestingHealth)
                 }
 
-                Section("Auth") {
-                    LabeledContent("Session", value: authManager.isAuthenticated ? "Authenticated" : "Not authenticated")
-                    LabeledContent("Current User", value: currentUserText)
-                    LabeledContent("Token Status", value: authManager.token == nil ? "Missing" : "Present")
+                Section("Autenticación") {
+                    LabeledContent("Sesión", value: authManager.isAuthenticated ? "Autenticada" : "Sin autenticar")
+                    LabeledContent("Usuario actual", value: currentUserText)
+                    LabeledContent("Estado del token", value: authManager.token == nil ? "Ausente" : "Disponible")
                 }
 
                 Section("Logs") {
                     NavigationLink {
                         ApplicationLogsView()
                     } label: {
-                        Label("Application Logs", systemImage: "doc.text.magnifyingglass")
+                        Label("Logs de la aplicación", systemImage: "doc.text.magnifyingglass")
                     }
                 }
 
-                Section("App Info") {
-                    LabeledContent("App Name", value: appName)
-                    LabeledContent("Version", value: appVersion)
+                Section("Información de la app") {
+                    LabeledContent("Nombre de la app", value: appName)
+                    LabeledContent("Versión", value: appVersion)
                     LabeledContent("Build", value: buildNumber)
                     LabeledContent("Bundle ID", value: bundleID)
-                    LabeledContent("iOS Version", value: UIDevice.current.systemVersion)
-                    LabeledContent("Device Model", value: UIDevice.current.model)
-                    LabeledContent("Environment", value: AppConfig.environmentName)
+                    LabeledContent("Versión de iOS", value: UIDevice.current.systemVersion)
+                    LabeledContent("Modelo del dispositivo", value: UIDevice.current.model)
+                    LabeledContent("Entorno", value: AppConfig.environmentName)
                     LabeledContent("Base URL", value: AppConfig.baseURL.absoluteString)
                 }
             }
-            .navigationTitle("Developer Tools")
+            .navigationTitle("Herramientas de desarrollo")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Done") {
+                    Button("Listo") {
                         dismiss()
                     }
                 }
@@ -91,12 +91,12 @@ struct DeveloperToolsView: View {
     }
 
     private var currentUserText: String {
-        guard let user = authManager.currentUser else { return "None" }
+        guard let user = authManager.currentUser else { return "Ninguno" }
         return "\(user.name) • \(user.email)"
     }
 
     private var healthLatencyText: String {
-        guard let healthLatencyMs else { return "N/A" }
+        guard let healthLatencyMs else { return "N/D" }
         return "\(healthLatencyMs) ms"
     }
 
@@ -105,15 +105,15 @@ struct DeveloperToolsView: View {
     }
 
     private var appVersion: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "N/A"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "N/D"
     }
 
     private var buildNumber: String {
-        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "N/A"
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "N/D"
     }
 
     private var bundleID: String {
-        Bundle.main.bundleIdentifier ?? "N/A"
+        Bundle.main.bundleIdentifier ?? "N/D"
     }
 
     private func testAPIHealth() async {
@@ -144,11 +144,11 @@ private enum HealthStatus {
     var title: String {
         switch self {
         case .notTested:
-            "Not tested"
+            "Sin probar"
         case .online:
-            "Online"
+            "En línea"
         case .offline:
-            "Offline"
+            "Sin conexión"
         }
     }
 }

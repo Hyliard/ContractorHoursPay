@@ -35,7 +35,7 @@ struct PaymentsView: View {
                 ContentUnavailableView("No tienes pagos registrados.", systemImage: "banknote")
             }
         }
-        .navigationTitle("Payments")
+        .navigationTitle("Pagos")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -69,16 +69,16 @@ struct PaymentsView: View {
     }
 
     private var filtersSection: some View {
-        Section("Filters") {
-            Toggle("From", isOn: $viewModel.hasFromDate)
+        Section("Filtros") {
+            Toggle("Desde", isOn: $viewModel.hasFromDate)
             if viewModel.hasFromDate {
-                DatePicker("From date", selection: $viewModel.fromDate, displayedComponents: .date)
+                DatePicker("Fecha desde", selection: $viewModel.fromDate, displayedComponents: .date)
             }
-            Toggle("To", isOn: $viewModel.hasToDate)
+            Toggle("Hasta", isOn: $viewModel.hasToDate)
             if viewModel.hasToDate {
-                DatePicker("To date", selection: $viewModel.toDate, displayedComponents: .date)
+                DatePicker("Fecha hasta", selection: $viewModel.toDate, displayedComponents: .date)
             }
-            Toggle("Include archived", isOn: $viewModel.includeInactive)
+            Toggle("Incluir archivados", isOn: $viewModel.includeInactive)
         }
     }
 
@@ -93,7 +93,7 @@ struct PaymentsView: View {
     }
 
     private var activeSection: some View {
-        Section("Active") {
+        Section("Activos") {
             if viewModel.activePayments.isEmpty {
                 Text("No tienes pagos activos.")
                     .foregroundStyle(.secondary)
@@ -104,7 +104,7 @@ struct PaymentsView: View {
     }
 
     private var archivedSection: some View {
-        Section("Archived") {
+        Section("Archivados") {
             if viewModel.archivedPayments.isEmpty {
                 Text("No tienes pagos archivados.")
                     .foregroundStyle(.secondary)

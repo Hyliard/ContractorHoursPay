@@ -9,7 +9,7 @@ struct ApplicationLogsView: View {
     var body: some View {
         List {
             Section {
-                Picker("Filter", selection: $filter) {
+                Picker("Filtro", selection: $filter) {
                     ForEach(ApplicationLogFilter.allCases) { filter in
                         Text(filter.title).tag(filter)
                     }
@@ -18,7 +18,7 @@ struct ApplicationLogsView: View {
             }
 
             if filteredEntries.isEmpty {
-                ContentUnavailableView("No logs", systemImage: "doc.text")
+                ContentUnavailableView("No hay logs", systemImage: "doc.text")
             } else {
                 ForEach(filteredEntries) { entry in
                     VStack(alignment: .leading, spacing: 4) {
@@ -39,7 +39,7 @@ struct ApplicationLogsView: View {
                 }
             }
         }
-        .navigationTitle("Application Logs")
+        .navigationTitle("Logs de la aplicación")
         .toolbar {
             ToolbarItemGroup(placement: .topBarTrailing) {
                 ShareLink(item: exportText) {
@@ -55,13 +55,13 @@ struct ApplicationLogsView: View {
                 }
                 .disabled(exportText.isEmpty)
 
-                Button("Clear") {
+                Button("Limpiar") {
                     logger.clear()
                 }
                 .disabled(logger.entries.isEmpty)
             }
         }
-        .alert("Logs copied", isPresented: $didCopy) {
+        .alert("Logs copiados", isPresented: $didCopy) {
             Button("OK", role: .cancel) {}
         }
     }
@@ -94,9 +94,9 @@ private enum ApplicationLogFilter: String, CaseIterable, Identifiable {
 
     var title: String {
         switch self {
-        case .all: "All"
-        case .network: "Network"
-        case .auth: "Auth"
+        case .all: "Todos"
+        case .network: "Red"
+        case .auth: "Autenticación"
         case .error: "Error"
         }
     }

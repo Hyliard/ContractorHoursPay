@@ -37,7 +37,7 @@ struct InvoicesView: View {
                 ContentUnavailableView("No tienes facturas todavía.", systemImage: "doc.text")
             }
         }
-        .navigationTitle("Invoices")
+        .navigationTitle("Facturas")
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
             ToolbarItem(placement: .topBarTrailing) {
@@ -76,24 +76,24 @@ struct InvoicesView: View {
     }
 
     private var filtersSection: some View {
-        Section("Filters") {
-            Picker("Status", selection: $viewModel.statusFilter) {
-                Text("All").tag(Optional<InvoiceStatus>.none)
+        Section("Filtros") {
+            Picker("Estado", selection: $viewModel.statusFilter) {
+                Text("Todas").tag(Optional<InvoiceStatus>.none)
                 ForEach(InvoiceStatus.allCases.filter { $0 != .overdue }) { status in
                     Text(status.title).tag(Optional(status))
                 }
             }
 
-            Toggle("Overdue only", isOn: $viewModel.showOverdueOnly)
-            Toggle("From", isOn: $viewModel.hasFromDate)
+            Toggle("Solo vencidas", isOn: $viewModel.showOverdueOnly)
+            Toggle("Desde", isOn: $viewModel.hasFromDate)
             if viewModel.hasFromDate {
-                DatePicker("From date", selection: $viewModel.fromDate, displayedComponents: .date)
+                DatePicker("Fecha desde", selection: $viewModel.fromDate, displayedComponents: .date)
             }
-            Toggle("To", isOn: $viewModel.hasToDate)
+            Toggle("Hasta", isOn: $viewModel.hasToDate)
             if viewModel.hasToDate {
-                DatePicker("To date", selection: $viewModel.toDate, displayedComponents: .date)
+                DatePicker("Fecha hasta", selection: $viewModel.toDate, displayedComponents: .date)
             }
-            Toggle("Include archived", isOn: $viewModel.includeInactive)
+            Toggle("Incluir archivadas", isOn: $viewModel.includeInactive)
         }
     }
 
@@ -108,7 +108,7 @@ struct InvoicesView: View {
     }
 
     private var activeSection: some View {
-        Section("Active") {
+        Section("Activas") {
             if viewModel.activeInvoices.isEmpty {
                 Text("No tienes facturas activas.")
                     .foregroundStyle(.secondary)
@@ -119,7 +119,7 @@ struct InvoicesView: View {
     }
 
     private var archivedSection: some View {
-        Section("Archived") {
+        Section("Archivadas") {
             if viewModel.archivedInvoices.isEmpty {
                 Text("No tienes facturas archivadas.")
                     .foregroundStyle(.secondary)

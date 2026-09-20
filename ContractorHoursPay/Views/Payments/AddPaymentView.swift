@@ -22,8 +22,8 @@ struct AddPaymentView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Payment") {
-                    Picker("Invoice", selection: $selectedInvoiceId) {
+                Section("Pago") {
+                    Picker("Factura", selection: $selectedInvoiceId) {
                         ForEach(invoices) { invoice in
                             Text("\(invoice.client.name) · \(invoice.outstandingAmount) \(invoice.currency)")
                                 .tag(invoice.id)
@@ -33,21 +33,21 @@ struct AddPaymentView: View {
 
                     if let selectedInvoice {
                         LabeledContent("Subtotal", value: (decimalValue(selectedInvoice.subtotal) ?? 0).formattedCurrency(code: selectedInvoice.currency))
-                        LabeledContent("Paid", value: (decimalValue(selectedInvoice.paidAmount) ?? 0).formattedCurrency(code: selectedInvoice.currency))
-                        LabeledContent("Outstanding", value: outstandingAmount.formattedCurrency(code: selectedInvoice.currency))
+                        LabeledContent("Cobrado", value: (decimalValue(selectedInvoice.paidAmount) ?? 0).formattedCurrency(code: selectedInvoice.currency))
+                        LabeledContent("Saldo pendiente", value: outstandingAmount.formattedCurrency(code: selectedInvoice.currency))
                     }
 
-                    TextField("Amount", text: $amount)
+                    TextField("Monto", text: $amount)
                         .keyboardType(.decimalPad)
 
-                    TextField("Currency", text: $currency)
+                    TextField("Moneda", text: $currency)
                         .textInputAutocapitalization(.characters)
                         .disabled(preselectedInvoice != nil)
 
-                    DatePicker("Paid Date", selection: $paidAt, displayedComponents: .date)
+                    DatePicker("Fecha de pago", selection: $paidAt, displayedComponents: .date)
 
-                    TextField("Method", text: $method)
-                    TextField("Note", text: $note, axis: .vertical)
+                    TextField("Método", text: $method)
+                    TextField("Nota", text: $note, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
 
@@ -58,11 +58,11 @@ struct AddPaymentView: View {
                     }
                 }
             }
-            .navigationTitle("New Payment")
+            .navigationTitle("Nuevo pago")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -71,7 +71,7 @@ struct AddPaymentView: View {
                         if isLoading {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("Guardar")
                         }
                     }
                     .disabled(!canSave)

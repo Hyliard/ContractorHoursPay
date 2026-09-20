@@ -56,7 +56,7 @@ struct ContractDetailView: View {
                 }
                 LabeledContent("Tarifa", value: "\(contract.hourlyRate) \(contract.currency)/h")
                 if let overtimeRate = contract.overtimeRate, !overtimeRate.isEmpty {
-                    LabeledContent("Overtime", value: "\(overtimeRate) \(contract.currency)/h")
+                    LabeledContent("Horas extra", value: "\(overtimeRate) \(contract.currency)/h")
                 }
                 if let startDate = contract.startDate {
                     LabeledContent("Inicio", value: startDate.formatted(.dateTime.day().month().year()))
@@ -66,7 +66,7 @@ struct ContractDetailView: View {
                 }
             }
 
-            Section("Work Logs") {
+            Section("Registros de horas") {
                 if let errorMessage = workLogsViewModel.errorMessage {
                     Text(errorMessage)
                         .foregroundStyle(.red)
@@ -106,7 +106,7 @@ struct ContractDetailView: View {
                 }
             }
 
-            Section("Invoices") {
+            Section("Facturas") {
                 if let errorMessage = invoicesViewModel.errorMessage {
                     Text(errorMessage)
                         .foregroundStyle(.red)

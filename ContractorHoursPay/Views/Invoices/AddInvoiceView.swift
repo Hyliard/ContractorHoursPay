@@ -32,23 +32,23 @@ struct AddInvoiceView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Invoice") {
-                    Picker("Client", selection: $selectedClientId) {
+                Section("Factura") {
+                    Picker("Cliente", selection: $selectedClientId) {
                         ForEach(clients) { client in
                             Text(client.name).tag(client.id)
                         }
                     }
                     .disabled(preselectedClient != nil)
 
-                    Picker("Contract", selection: $selectedContractId) {
-                        Text("None").tag("")
+                    Picker("Contrato", selection: $selectedContractId) {
+                        Text("Ninguno").tag("")
                         ForEach(filteredContracts) { contract in
                             Text(contract.name).tag(contract.id)
                         }
                     }
                     .disabled(preselectedContract != nil)
 
-                    TextField("Currency", text: $currency)
+                    TextField("Moneda", text: $currency)
                         .textInputAutocapitalization(.characters)
                         .onChange(of: currency) { currency = String(currency.uppercased().prefix(3)) }
 
@@ -56,25 +56,25 @@ struct AddInvoiceView: View {
                         .keyboardType(.decimalPad)
 
                     if let suggestedSubtotal {
-                        Button("Use suggested subtotal \(suggestedSubtotal.formattedCurrency(code: currency))") {
+                        Button("Usar subtotal sugerido \(suggestedSubtotal.formattedCurrency(code: currency))") {
                             subtotal = NSDecimalNumber(decimal: suggestedSubtotal).stringValue
                         }
                     }
                 }
 
-                Section("Period") {
-                    DatePicker("From", selection: $periodFrom, displayedComponents: .date)
-                    DatePicker("To", selection: $periodTo, displayedComponents: .date)
-                    DatePicker("Issued", selection: $issuedAt, displayedComponents: .date)
-                    Toggle("Due Date", isOn: $hasDueDate)
+                Section("Período") {
+                    DatePicker("Desde", selection: $periodFrom, displayedComponents: .date)
+                    DatePicker("Hasta", selection: $periodTo, displayedComponents: .date)
+                    DatePicker("Fecha de emisión", selection: $issuedAt, displayedComponents: .date)
+                    Toggle("Fecha de vencimiento", isOn: $hasDueDate)
                     if hasDueDate {
-                        DatePicker("Due", selection: $dueDate, displayedComponents: .date)
+                        DatePicker("Vence", selection: $dueDate, displayedComponents: .date)
                     }
                 }
 
-                Section("Work Logs") {
+                Section("Registros de horas") {
                     if matchingWorkLogs.isEmpty {
-                        Text("No matching WorkLogs.")
+                        Text("No hay registros de horas que coincidan.")
                             .foregroundStyle(.secondary)
                     } else {
                         ForEach(matchingWorkLogs) { workLog in
@@ -98,8 +98,8 @@ struct AddInvoiceView: View {
                     }
                 }
 
-                Section("Note") {
-                    TextField("Optional", text: $note, axis: .vertical)
+                Section("Nota") {
+                    TextField("Opcional", text: $note, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
 
@@ -110,11 +110,11 @@ struct AddInvoiceView: View {
                     }
                 }
             }
-            .navigationTitle("New Invoice")
+            .navigationTitle("Nueva factura")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancelar") { dismiss() }
                 }
 
                 ToolbarItem(placement: .confirmationAction) {
@@ -124,7 +124,7 @@ struct AddInvoiceView: View {
                         if isLoading {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("Guardar")
                         }
                     }
                     .disabled(!canSave)

@@ -36,7 +36,7 @@ struct DashboardView: View {
                 .padding(20)
             }
             .background(Color(.systemGroupedBackground))
-            .navigationTitle("Dashboard")
+            .navigationTitle("Resumen")
             .navigationBarTitleDisplayMode(.inline)
             .overlay {
                 if viewModel.isLoading && viewModel.monthlyWorkLogs.isEmpty && viewModel.recentWorkLogs.isEmpty {
@@ -80,7 +80,7 @@ struct DashboardView: View {
                     }
                     .accessibilityLabel("ContractorHoursPay")
 
-                Text("Hola, \(authManager.currentUser?.name ?? "Contractor")")
+                Text("Hola, \(authManager.currentUser?.name ?? "Contratista")")
                     .font(.title3)
                     .fontWeight(.semibold)
                     .lineLimit(1)

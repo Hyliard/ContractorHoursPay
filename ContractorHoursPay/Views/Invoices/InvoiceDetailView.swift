@@ -29,34 +29,34 @@ struct InvoiceDetailView: View {
                 }
             }
 
-            Section("Summary") {
+            Section("Resumen") {
                 LabeledContent("Subtotal", value: money(invoice.subtotal))
-                LabeledContent("Paid", value: money(invoice.paidAmount))
-                LabeledContent("Outstanding", value: money(invoice.outstandingAmount))
-                LabeledContent("Currency", value: invoice.currency)
+                LabeledContent("Cobrado", value: money(invoice.paidAmount))
+                LabeledContent("Saldo pendiente", value: money(invoice.outstandingAmount))
+                LabeledContent("Moneda", value: invoice.currency)
                 statusRow
             }
  
-            Section("Period") {
-                LabeledContent("From", value: invoice.periodFrom.formatted(.dateTime.day().month().year()))
-                LabeledContent("To", value: invoice.periodTo.formatted(.dateTime.day().month().year()))
-                LabeledContent("Issued", value: invoice.issuedAt.formatted(.dateTime.day().month().year()))
+            Section("Período") {
+                LabeledContent("Desde", value: invoice.periodFrom.formatted(.dateTime.day().month().year()))
+                LabeledContent("Hasta", value: invoice.periodTo.formatted(.dateTime.day().month().year()))
+                LabeledContent("Fecha de emisión", value: invoice.issuedAt.formatted(.dateTime.day().month().year()))
                 if let dueDate = invoice.dueDate {
-                    LabeledContent("Due", value: dueDate.formatted(.dateTime.day().month().year()))
+                    LabeledContent("Vence", value: dueDate.formatted(.dateTime.day().month().year()))
                 }
             }
 
-            Section("Client / Contract") {
-                LabeledContent("Client", value: invoice.client.name)
+            Section("Cliente / Contrato") {
+                LabeledContent("Cliente", value: invoice.client.name)
                 if let company = invoice.client.company, !company.isEmpty {
-                    LabeledContent("Company", value: company)
+                    LabeledContent("Empresa", value: company)
                 }
                 if let contract = invoice.contract {
-                    LabeledContent("Contract", value: contract.name)
+                    LabeledContent("Contrato", value: contract.name)
                 }
             }
 
-            Section("WorkLogs") {
+            Section("Registros de horas") {
                 if invoice.workLogs.isEmpty {
                     Text("No hay registros asociados.")
                         .foregroundStyle(.secondary)
@@ -67,7 +67,7 @@ struct InvoiceDetailView: View {
                 }
             }
 
-            Section("Payments") {
+            Section("Pagos") {
                 if paymentsViewModel.isLoading && paymentsViewModel.payments.isEmpty {
                     ProgressView()
                 } else if paymentsViewModel.payments.isEmpty {
@@ -89,19 +89,19 @@ struct InvoiceDetailView: View {
                     Button {
                         isShowingAddPayment = true
                     } label: {
-                        Label("Add Payment", systemImage: "plus")
+                        Label("Agregar pago", systemImage: "plus")
                     }
                 }
 
                 NavigationLink {
                     PaymentsView(invoiceId: invoice.id, preselectedInvoice: invoice)
                 } label: {
-                    Label("View all", systemImage: "banknote")
+                    Label("Ver todos", systemImage: "banknote")
                 }
             }
 
             if let note = invoice.note, !note.isEmpty {
-                Section("Note") {
+                Section("Nota") {
                     Text(note)
                 }
             }
@@ -110,7 +110,7 @@ struct InvoiceDetailView: View {
                 Button {
                     isShowingEdit = true
                 } label: {
-                    Label("Edit", systemImage: "square.and.pencil")
+                    Label("Editar", systemImage: "square.and.pencil")
                 }
                 .disabled(!invoice.active)
 
@@ -124,7 +124,7 @@ struct InvoiceDetailView: View {
                     if isUpdatingStatus {
                         ProgressView()
                     } else {
-                        Label(invoice.active ? "Archive Invoice" : "Reactivate Invoice", systemImage: invoice.active ? "archivebox" : "arrow.uturn.backward.circle")
+                        Label(invoice.active ? "Archivar factura" : "Reactivar factura", systemImage: invoice.active ? "archivebox" : "arrow.uturn.backward.circle")
                     }
                 }
                 .disabled(isUpdatingStatus)
@@ -135,7 +135,7 @@ struct InvoiceDetailView: View {
                 ProgressView()
             }
         }
-        .navigationTitle("Invoice")
+        .navigationTitle("Factura")
         .navigationBarTitleDisplayMode(.inline)
         .task {
             await refreshAll()
@@ -155,19 +155,19 @@ struct InvoiceDetailView: View {
             AddPaymentView(paymentsViewModel: paymentsViewModel, preselectedInvoice: invoice)
                 .environmentObject(authManager)
         }
-        .confirmationDialog("Archive Invoice?", isPresented: $isShowingArchiveConfirmation, titleVisibility: .visible) {
-            Button("Archive Invoice", role: .destructive) {
+        .confirmationDialog("¿Archivar factura?", isPresented: $isShowingArchiveConfirmation, titleVisibility: .visible) {
+            Button("Archivar factura", role: .destructive) {
                 Task { await archive() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("The invoice will be hidden from active lists, but it will not be permanently deleted.")
+            Text("La factura dejará de aparecer en las listas activas, pero no se eliminará permanentemente.")
         }
-        .confirmationDialog("Reactivate Invoice?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
-            Button("Reactivate Invoice") {
+        .confirmationDialog("¿Reactivar factura?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
+            Button("Reactivar factura") {
                 Task { await reactivate() }
             }
-            Button("Cancel", role: .cancel) {}
+            Button("Cancelar", role: .cancel) {}
         }
     }
 
@@ -179,9 +179,9 @@ struct InvoiceDetailView: View {
 
     private var statusRow: some View {
         HStack {
-            Text("Status")
+            Text("Estado")
             Spacer()
-            Text(invoice.active ? invoice.effectiveStatus.title : "Archived")
+            Text(invoice.active ? invoice.effectiveStatus.title : "Archivada")
                 .font(.caption)
                 .fontWeight(.medium)
                 .padding(.horizontal, 8)
@@ -276,7 +276,7 @@ private struct InvoiceWorkLogRow: View {
                     .fontWeight(.semibold)
 
                 if workLog.isOvertime {
-                    Text("Overtime")
+                    Text("Horas extra")
                         .font(.caption2)
                         .foregroundStyle(.orange)
                 }

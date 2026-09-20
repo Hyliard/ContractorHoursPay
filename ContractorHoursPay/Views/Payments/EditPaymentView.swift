@@ -30,15 +30,15 @@ struct EditPaymentView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Payment") {
-                    TextField("Amount", text: $amount)
+                Section("Pago") {
+                    TextField("Monto", text: $amount)
                         .keyboardType(.decimalPad)
-                    LabeledContent("Currency", value: payment.currency)
-                    DatePicker("Paid Date", selection: $paidAt, displayedComponents: .date)
-                    TextField("Method", text: $method)
-                    TextField("Note", text: $note, axis: .vertical)
+                    LabeledContent("Moneda", value: payment.currency)
+                    DatePicker("Fecha de pago", selection: $paidAt, displayedComponents: .date)
+                    TextField("Método", text: $method)
+                    TextField("Nota", text: $note, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
-                    Toggle("Active", isOn: $active)
+                    Toggle("Activo", isOn: $active)
                 }
 
                 if let errorMessage {
@@ -48,11 +48,11 @@ struct EditPaymentView: View {
                     }
                 }
             }
-            .navigationTitle("Edit Payment")
+            .navigationTitle("Editar pago")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -61,7 +61,7 @@ struct EditPaymentView: View {
                         if isLoading {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("Guardar")
                         }
                     }
                     .disabled(!canSave)

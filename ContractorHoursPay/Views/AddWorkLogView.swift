@@ -47,7 +47,7 @@ struct AddWorkLogView: View {
                     TextField("Horas", text: $hours)
                         .keyboardType(.decimalPad)
 
-                    Toggle("Overtime", isOn: $isOvertime)
+                    Toggle("Horas extra", isOn: $isOvertime)
                 }
 
                 Section("Nota") {

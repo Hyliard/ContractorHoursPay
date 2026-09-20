@@ -29,13 +29,13 @@ struct InvoiceRowView: View {
             HStack {
                 moneyColumn("Subtotal", invoice.subtotal)
                 Spacer()
-                moneyColumn("Paid", invoice.paidAmount)
+                moneyColumn("Cobrado", invoice.paidAmount)
                 Spacer()
-                moneyColumn("Outstanding", invoice.outstandingAmount)
+                moneyColumn("Saldo pendiente", invoice.outstandingAmount)
             }
 
             if let dueDate = invoice.dueDate {
-                Text("Due \(dueDate.formatted(.dateTime.day().month().year()))")
+                Text("Vence \(dueDate.formatted(.dateTime.day().month().year()))")
                     .font(.caption)
                     .foregroundStyle(.secondary)
             }
@@ -59,7 +59,7 @@ struct InvoiceRowView: View {
 
     private var statusText: String {
         if !invoice.active {
-            return "Archived"
+            return "Archivada"
         }
         return invoice.effectiveStatus.title
     }

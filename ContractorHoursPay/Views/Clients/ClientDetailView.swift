@@ -65,7 +65,7 @@ struct ClientDetailView: View {
                 contractsContent
             } header: {
                 HStack {
-                    Text("Contracts")
+                    Text("Contratos")
                     Spacer()
                     if client.active {
                         Button {
@@ -82,7 +82,7 @@ struct ClientDetailView: View {
                 invoicesContent
             } header: {
                 HStack {
-                    Text("Invoices")
+                    Text("Facturas")
                     Spacer()
                     if client.active {
                         Button {

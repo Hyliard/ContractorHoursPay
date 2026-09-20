@@ -137,7 +137,7 @@ func isValidPositiveDecimal(_ value: String) -> Bool {
     let normalized = normalizedRate(value)
     guard !normalized.isEmpty,
           normalized.range(of: #"^\d+(\.\d{1,4})?$"#, options: .regularExpression) != nil,
-          let decimal = Decimal(string: normalized) else {
+          let decimal = Decimal(string: normalized, locale: Locale(identifier: "en_US_POSIX")) else {
         return false
     }
     return decimal > 0

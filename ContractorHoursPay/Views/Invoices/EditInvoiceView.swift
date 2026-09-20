@@ -38,31 +38,31 @@ struct EditInvoiceView: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section("Invoice") {
+                Section("Factura") {
                     TextField("Subtotal", text: $subtotal)
                         .keyboardType(.decimalPad)
 
-                    Picker("Status", selection: $status) {
+                    Picker("Estado", selection: $status) {
                         ForEach(InvoiceStatus.allCases.filter { $0 != .overdue }) { status in
                             Text(status.title).tag(status)
                         }
                     }
 
-                    Toggle("Active", isOn: $active)
+                    Toggle("Activo", isOn: $active)
                 }
 
-                Section("Dates") {
-                    DatePicker("From", selection: $periodFrom, displayedComponents: .date)
-                    DatePicker("To", selection: $periodTo, displayedComponents: .date)
-                    DatePicker("Issued", selection: $issuedAt, displayedComponents: .date)
-                    Toggle("Due Date", isOn: $hasDueDate)
+                Section("Fechas") {
+                    DatePicker("Desde", selection: $periodFrom, displayedComponents: .date)
+                    DatePicker("Hasta", selection: $periodTo, displayedComponents: .date)
+                    DatePicker("Fecha de emisión", selection: $issuedAt, displayedComponents: .date)
+                    Toggle("Fecha de vencimiento", isOn: $hasDueDate)
                     if hasDueDate {
-                        DatePicker("Due", selection: $dueDate, displayedComponents: .date)
+                        DatePicker("Vence", selection: $dueDate, displayedComponents: .date)
                     }
                 }
 
-                Section("Note") {
-                    TextField("Optional", text: $note, axis: .vertical)
+                Section("Nota") {
+                    TextField("Opcional", text: $note, axis: .vertical)
                         .lineLimit(3, reservesSpace: true)
                 }
 
@@ -73,11 +73,11 @@ struct EditInvoiceView: View {
                     }
                 }
             }
-            .navigationTitle("Edit Invoice")
+            .navigationTitle("Editar factura")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") { dismiss() }
+                    Button("Cancelar") { dismiss() }
                 }
                 ToolbarItem(placement: .confirmationAction) {
                     Button {
@@ -86,7 +86,7 @@ struct EditInvoiceView: View {
                         if isLoading {
                             ProgressView()
                         } else {
-                            Text("Save")
+                            Text("Guardar")
                         }
                     }
                     .disabled(!canSave)
