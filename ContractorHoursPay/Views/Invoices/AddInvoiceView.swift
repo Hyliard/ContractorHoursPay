@@ -4,6 +4,7 @@ struct AddInvoiceView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authManager: AuthManager
     @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
     @ObservedObject var invoicesViewModel: InvoicesViewModel
 
     let preselectedClient: Client?
@@ -85,7 +86,7 @@ struct AddInvoiceView: View {
                                 HStack {
                                     VStack(alignment: .leading, spacing: 3) {
                                         Text(workLog.workDate.formatted(.dateTime.day().month().year()))
-                                        Text("\(workLog.hours) h · \(workLog.contract.name)")
+                                        Text("\(AppPreferences.formattedHours(workLog.hours, hourFormat: hourFormat)) · \(workLog.contract.name)")
                                             .font(.caption)
                                             .foregroundStyle(.secondary)
                                     }

@@ -65,13 +65,16 @@ func isValidCurrencyCode(_ value: String) -> Bool {
         .range(of: #"^[A-Za-z]{3}$"#, options: .regularExpression) != nil
 }
 
-func formattedCurrencyGroups(_ summaries: [CurrencyAmountSummary], hideAmounts: Bool = false) -> String {
+func formattedCurrencyGroups(_ summaries: [CurrencyAmountSummary], hideAmounts: Bool = false, preferredCurrency: String = "") -> String {
     if summaries.isEmpty {
         return "N/A"
     }
 
     return summaries
-        .sorted { $0.currency < $1.currency }
+        .sorted {
+            AppPreferences.currencySortPriority($0.currency, preferredCurrency: preferredCurrency)
+                < AppPreferences.currencySortPriority($1.currency, preferredCurrency: preferredCurrency)
+        }
         .map { AppPreferences.financialAmount($0.amount, currency: $0.currency, hideAmounts: hideAmounts) }
         .joined(separator: "\n")
 }
@@ -86,6 +89,7 @@ extension Decimal {
     var formattedHours: String {
         let formatter = NumberFormatter()
         formatter.numberStyle = .decimal
+        formatter.locale = Locale(identifier: "en_US_POSIX")
         formatter.minimumFractionDigits = 0
         formatter.maximumFractionDigits = 2
         return formatter.string(from: NSDecimalNumber(decimal: self)) ?? "0"

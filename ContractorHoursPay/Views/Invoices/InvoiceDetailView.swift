@@ -252,6 +252,7 @@ struct InvoiceDetailView: View {
 
 private struct InvoiceWorkLogRow: View {
     @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
 
     let workLog: InvoiceWorkLogSummary
 
@@ -279,7 +280,7 @@ private struct InvoiceWorkLogRow: View {
             Spacer()
 
             VStack(alignment: .trailing, spacing: 3) {
-                Text("\(workLog.hours) h")
+                Text(AppPreferences.formattedHours(workLog.hours, hourFormat: hourFormat))
                     .font(.subheadline)
                     .fontWeight(.semibold)
 

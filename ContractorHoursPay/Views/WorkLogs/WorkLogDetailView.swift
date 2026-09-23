@@ -4,6 +4,7 @@ struct WorkLogDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
     @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
     @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
     @ObservedObject var workLogsViewModel: WorkLogsViewModel
 
     @State private var workLog: WorkLog
@@ -45,7 +46,7 @@ struct WorkLogDetailView: View {
             }
 
             Section("Información") {
-                LabeledContent("Horas", value: "\(workLog.hours) h")
+                LabeledContent("Horas", value: AppPreferences.formattedHours(workLog.hours, hourFormat: hourFormat))
                 LabeledContent("Contrato", value: workLog.contract.name)
                 LabeledContent("Cliente", value: workLog.contract.client.name)
                 if let company = workLog.contract.client.company, !company.isEmpty {

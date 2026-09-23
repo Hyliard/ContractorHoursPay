@@ -2,6 +2,7 @@ import SwiftUI
 
 struct WorkLogRowView: View {
     @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
 
     let workLog: WorkLog
 
@@ -34,7 +35,7 @@ struct WorkLogRowView: View {
             Spacer(minLength: 12)
 
             VStack(alignment: .trailing, spacing: 4) {
-                Text("\(workLog.hours) h")
+                Text(AppPreferences.formattedHours(workLog.hours, hourFormat: hourFormat))
                     .font(.subheadline)
                     .fontWeight(.semibold)
 

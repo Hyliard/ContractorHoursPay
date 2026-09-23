@@ -15,9 +15,9 @@ struct ProfileView: View {
     @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
     @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
     @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
-    @AppStorage("profile.weekStartsOn") private var weekStartsOn = "monday"
-    @AppStorage("profile.hourFormat") private var hourFormat = "decimal"
-    @AppStorage("profile.preferredCurrency") private var preferredCurrency = "USD"
+    @AppStorage(AppPreferenceKey.weekStartsOn) private var weekStartsOn = "monday"
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
+    @AppStorage(AppPreferenceKey.preferredCurrency) private var preferredCurrency = "USD"
 
     private let avatarService = AvatarAPIService()
     private let themeOptions = [

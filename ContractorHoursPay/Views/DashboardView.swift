@@ -4,6 +4,7 @@ struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
     @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
     @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+    @AppStorage(AppPreferenceKey.preferredCurrency) private var preferredCurrency = "USD"
     @StateObject private var viewModel = DashboardViewModel()
     @StateObject private var workLogsViewModel = WorkLogsViewModel()
     @State private var isShowingProfile = false
@@ -134,21 +135,21 @@ struct DashboardView: View {
 
             MetricCard(
                 title: "Pendiente",
-                value: formattedCurrencyGroups(viewModel.pendingSummaries, hideAmounts: hideAmounts),
+                value: formattedCurrencyGroups(viewModel.pendingSummaries, hideAmounts: hideAmounts, preferredCurrency: preferredCurrency),
                 systemImage: "hourglass",
                 tint: .orange
             )
 
             MetricCard(
                 title: "Cobrado",
-                value: formattedCurrencyGroups(viewModel.paidSummaries, hideAmounts: hideAmounts),
+                value: formattedCurrencyGroups(viewModel.paidSummaries, hideAmounts: hideAmounts, preferredCurrency: preferredCurrency),
                 systemImage: "checkmark.seal.fill",
                 tint: .green
             )
 
             MetricCard(
                 title: "Vencido",
-                value: formattedCurrencyGroups(viewModel.overdueSummaries, hideAmounts: hideAmounts),
+                value: formattedCurrencyGroups(viewModel.overdueSummaries, hideAmounts: hideAmounts, preferredCurrency: preferredCurrency),
                 systemImage: "exclamationmark.triangle.fill",
                 tint: .red
             )
@@ -160,7 +161,8 @@ struct DashboardView: View {
             viewModel.summariesByCurrency.map {
                 CurrencyAmountSummary(currency: $0.currency, amount: $0.estimatedIncome)
             },
-            hideAmounts: hideAmounts
+            hideAmounts: hideAmounts,
+            preferredCurrency: preferredCurrency
         )
     }
 
@@ -398,6 +400,8 @@ struct DashboardView: View {
 
 private struct IncomeSummaryCard: View {
     @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
+    @AppStorage(AppPreferenceKey.preferredCurrency) private var preferredCurrency = "USD"
 
     let summaries: [DashboardCurrencySummary]
     let totalHours: Decimal
@@ -429,7 +433,7 @@ private struct IncomeSummaryCard: View {
                     .font(.title2)
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
-            } else if summaries.count == 1, let summary = summaries.first {
+            } else if sortedSummaries.count == 1, let summary = sortedSummaries.first {
                 Text(AppPreferences.financialAmount(summary.estimatedIncome, currency: summary.currency, hideAmounts: hideAmounts))
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
@@ -438,7 +442,7 @@ private struct IncomeSummaryCard: View {
                     .accessibilityLabel("Estimado este mes \(AppPreferences.financialAmount(summary.estimatedIncome, currency: summary.currency, hideAmounts: hideAmounts))")
             } else {
                 VStack(alignment: .leading, spacing: 8) {
-                    ForEach(summaries) { summary in
+                    ForEach(sortedSummaries) { summary in
                         HStack {
                             Text(summary.currency)
                                 .font(.subheadline)
@@ -454,7 +458,7 @@ private struct IncomeSummaryCard: View {
                 }
             }
 
-            Text("\(totalHours.formattedHours) h trabajadas")
+            Text("\(AppPreferences.formattedHours(totalHours, hourFormat: hourFormat)) trabajadas")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
         }
@@ -462,6 +466,13 @@ private struct IncomeSummaryCard: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
         .shadow(color: .black.opacity(0.07), radius: 14, x: 0, y: 8)
+    }
+
+    private var sortedSummaries: [DashboardCurrencySummary] {
+        summaries.sorted {
+            AppPreferences.currencySortPriority($0.currency, preferredCurrency: preferredCurrency)
+                < AppPreferences.currencySortPriority($1.currency, preferredCurrency: preferredCurrency)
+        }
     }
 }
 
@@ -497,6 +508,8 @@ private struct MetricCard: View {
 }
 
 private struct RecentWorkLogRow: View {
+    @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
+
     let workLog: WorkLog
     let highlightOvertime: Bool
 
@@ -526,7 +539,7 @@ private struct RecentWorkLogRow: View {
 
             Spacer()
 
-            Text("\(workLog.hours) h")
+            Text(AppPreferences.formattedHours(workLog.hours, hourFormat: hourFormat))
                 .font(.subheadline)
                 .fontWeight(.semibold)
                 .lineLimit(1)
