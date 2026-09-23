@@ -94,17 +94,17 @@ struct WorkLog: Codable, Identifiable, Equatable {
     }
 
     nonisolated static func encodeDateOnly(_ date: Date) -> String {
-        makeDateOnlyFormatter().string(from: date)
+        BusinessDate.encode(date)
     }
 
     private nonisolated static func decodeDateOnly(_ value: String, forKey key: CodingKeys) throws -> Date {
-        if let date = makeDateOnlyFormatter().date(from: value) {
-            return date
+        do {
+            return try BusinessDate.decode(value)
+        } catch {
+            throw DecodingError.dataCorrupted(
+                DecodingError.Context(codingPath: [key], debugDescription: "Invalid date: \(value)")
+            )
         }
-
-        throw DecodingError.dataCorrupted(
-            DecodingError.Context(codingPath: [key], debugDescription: "Invalid date: \(value)")
-        )
     }
 
     private nonisolated static func decodeTimestamp(_ value: String, forKey key: CodingKeys) throws -> Date {
@@ -119,15 +119,6 @@ struct WorkLog: Codable, Identifiable, Equatable {
 
     private nonisolated static func encodeTimestamp(_ date: Date) -> String {
         makeFractionalTimestampFormatter().string(from: date)
-    }
-
-    private nonisolated static func makeDateOnlyFormatter() -> DateFormatter {
-        let formatter = DateFormatter()
-        formatter.calendar = Calendar(identifier: .gregorian)
-        formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
-        formatter.dateFormat = "yyyy-MM-dd"
-        return formatter
     }
 
     private nonisolated static func makeFractionalTimestampFormatter() -> ISO8601DateFormatter {

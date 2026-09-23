@@ -3,6 +3,7 @@ import SwiftUI
 struct AddInvoiceView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
     @ObservedObject var invoicesViewModel: InvoicesViewModel
 
     let preselectedClient: Client?
@@ -56,7 +57,7 @@ struct AddInvoiceView: View {
                         .keyboardType(.decimalPad)
 
                     if let suggestedSubtotal {
-                        Button("Usar subtotal sugerido \(suggestedSubtotal.formattedCurrency(code: currency))") {
+                        Button("Usar subtotal sugerido \(AppPreferences.financialAmount(suggestedSubtotal, currency: currency, hideAmounts: hideAmounts))") {
                             subtotal = NSDecimalNumber(decimal: suggestedSubtotal).stringValue
                         }
                     }

@@ -1,15 +1,17 @@
 import SwiftUI
 
 struct WorkLogRowView: View {
+    @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+
     let workLog: WorkLog
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: workLog.isOvertime ? "clock.badge.exclamationmark" : "clock")
                 .font(.headline)
-                .foregroundStyle(workLog.isOvertime ? .orange : .blue)
+                .foregroundStyle(iconColor)
                 .frame(width: 38, height: 38)
-                .background((workLog.isOvertime ? Color.orange : Color.blue).opacity(0.12), in: Circle())
+                .background(iconColor.opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: 4) {
                 Text(workLog.workDate.formatted(.dateTime.day().month().year()))
@@ -56,6 +58,10 @@ struct WorkLogRowView: View {
         if !workLog.active {
             return .secondary
         }
-        return workLog.isOvertime ? .orange : .green
+        return workLog.isOvertime && highlightOvertime ? .orange : .green
+    }
+
+    private var iconColor: Color {
+        workLog.isOvertime && highlightOvertime ? .orange : .blue
     }
 }

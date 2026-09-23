@@ -9,12 +9,12 @@ struct CurrencyAmountSummary: Identifiable, Equatable {
 
 enum BusinessDate {
     static func encode(_ date: Date) -> String {
-        formatter.string(from: date)
+        makeFormatter().string(from: date)
     }
 
     static func decode(_ value: String) throws -> Date {
-        if let date = formatter.date(from: value) {
-            return date
+        if let date = makeFormatter().date(from: value) {
+            return Calendar.current.startOfDay(for: date)
         }
 
         throw DecodingError.dataCorrupted(
@@ -22,14 +22,14 @@ enum BusinessDate {
         )
     }
 
-    static let formatter: DateFormatter = {
+    private static func makeFormatter() -> DateFormatter {
         let formatter = DateFormatter()
         formatter.calendar = Calendar(identifier: .gregorian)
         formatter.locale = Locale(identifier: "en_US_POSIX")
-        formatter.timeZone = TimeZone(secondsFromGMT: 0)
+        formatter.timeZone = TimeZone.current
         formatter.dateFormat = "yyyy-MM-dd"
         return formatter
-    }()
+    }
 }
 
 enum TimestampDate {
@@ -65,14 +65,14 @@ func isValidCurrencyCode(_ value: String) -> Bool {
         .range(of: #"^[A-Za-z]{3}$"#, options: .regularExpression) != nil
 }
 
-func formattedCurrencyGroups(_ summaries: [CurrencyAmountSummary]) -> String {
+func formattedCurrencyGroups(_ summaries: [CurrencyAmountSummary], hideAmounts: Bool = false) -> String {
     if summaries.isEmpty {
         return "N/A"
     }
 
     return summaries
         .sorted { $0.currency < $1.currency }
-        .map { $0.amount.formattedCurrency(code: $0.currency) }
+        .map { AppPreferences.financialAmount($0.amount, currency: $0.currency, hideAmounts: hideAmounts) }
         .joined(separator: "\n")
 }
 

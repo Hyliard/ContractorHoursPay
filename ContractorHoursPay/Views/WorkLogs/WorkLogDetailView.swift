@@ -2,6 +2,8 @@ import SwiftUI
 
 struct WorkLogDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
+    @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
     @ObservedObject var workLogsViewModel: WorkLogsViewModel
 
     @State private var workLog: WorkLog
@@ -68,7 +70,11 @@ struct WorkLogDetailView: View {
 
                 Button(role: workLog.active ? .destructive : nil) {
                     if workLog.active {
-                        isShowingArchiveConfirmation = true
+                        if confirmBeforeArchive {
+                            isShowingArchiveConfirmation = true
+                        } else {
+                            Task { await archive() }
+                        }
                     } else {
                         isShowingReactivateConfirmation = true
                     }
@@ -109,7 +115,7 @@ struct WorkLogDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("El registro dejará de aparecer en la lista activa, pero su información no se eliminará permanentemente.")
+            Text("Podrás reactivarlo más adelante.")
         }
         .confirmationDialog("¿Reactivar registro?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
             Button("Reactivar registro") {
@@ -134,11 +140,11 @@ struct WorkLogDetailView: View {
     private var overtimeBadge: some View {
         Text("Horas extra")
             .font(.caption)
-            .fontWeight(.medium)
+            .fontWeight(highlightOvertime ? .medium : .regular)
             .padding(.horizontal, 8)
             .padding(.vertical, 4)
-            .background(Color.orange.opacity(0.14), in: Capsule())
-            .foregroundStyle(.orange)
+            .background((highlightOvertime ? Color.orange : Color.secondary).opacity(0.14), in: Capsule())
+            .foregroundStyle(highlightOvertime ? .orange : .secondary)
     }
 
     private func refresh() async {

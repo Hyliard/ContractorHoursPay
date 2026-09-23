@@ -2,6 +2,7 @@ import SwiftUI
 
 struct RootView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.themePreference) private var themePreference = "system"
 
     var body: some View {
         Group {
@@ -16,6 +17,7 @@ struct RootView: View {
         .task {
             await authManager.restoreSession()
         }
+        .preferredColorScheme(AppPreferences.colorScheme(for: themePreference))
     }
 }
 

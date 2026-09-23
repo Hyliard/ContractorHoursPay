@@ -3,6 +3,7 @@ import SwiftUI
 struct AddPaymentView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
     @ObservedObject var paymentsViewModel: PaymentsViewModel
 
     let preselectedInvoice: Invoice?
@@ -25,16 +26,16 @@ struct AddPaymentView: View {
                 Section("Pago") {
                     Picker("Factura", selection: $selectedInvoiceId) {
                         ForEach(invoices) { invoice in
-                            Text("\(invoice.client.name) · \(invoice.outstandingAmount) \(invoice.currency)")
+                            Text("\(invoice.client.name) · \(AppPreferences.financialAmount(invoice.outstandingAmount, currency: invoice.currency, hideAmounts: hideAmounts))")
                                 .tag(invoice.id)
                         }
                     }
                     .disabled(preselectedInvoice != nil)
 
                     if let selectedInvoice {
-                        LabeledContent("Subtotal", value: (decimalValue(selectedInvoice.subtotal) ?? 0).formattedCurrency(code: selectedInvoice.currency))
-                        LabeledContent("Cobrado", value: (decimalValue(selectedInvoice.paidAmount) ?? 0).formattedCurrency(code: selectedInvoice.currency))
-                        LabeledContent("Saldo pendiente", value: outstandingAmount.formattedCurrency(code: selectedInvoice.currency))
+                        LabeledContent("Subtotal", value: AppPreferences.financialAmount(selectedInvoice.subtotal, currency: selectedInvoice.currency, hideAmounts: hideAmounts))
+                        LabeledContent("Cobrado", value: AppPreferences.financialAmount(selectedInvoice.paidAmount, currency: selectedInvoice.currency, hideAmounts: hideAmounts))
+                        LabeledContent("Saldo pendiente", value: AppPreferences.financialAmount(outstandingAmount, currency: selectedInvoice.currency, hideAmounts: hideAmounts))
                     }
 
                     TextField("Monto", text: $amount)

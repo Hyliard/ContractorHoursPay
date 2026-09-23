@@ -2,6 +2,8 @@ import SwiftUI
 
 struct PaymentDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+    @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
     @ObservedObject var paymentsViewModel: PaymentsViewModel
 
     @State private var payment: Payment
@@ -67,7 +69,11 @@ struct PaymentDetailView: View {
 
                 Button(role: payment.active ? .destructive : nil) {
                     if payment.active {
-                        isShowingArchiveConfirmation = true
+                        if confirmBeforeArchive {
+                            isShowingArchiveConfirmation = true
+                        } else {
+                            Task { await archive() }
+                        }
                     } else {
                         isShowingReactivateConfirmation = true
                     }
@@ -107,7 +113,7 @@ struct PaymentDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("El pago dejará de aparecer en las listas activas, pero no se eliminará permanentemente.")
+            Text("Podrás reactivarlo más adelante.")
         }
         .confirmationDialog("¿Reactivar pago?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
             Button("Reactivar pago") {
@@ -132,11 +138,11 @@ struct PaymentDetailView: View {
     }
 
     private func money(_ value: String) -> String {
-        (decimalValue(value) ?? 0).formattedCurrency(code: payment.currency)
+        AppPreferences.financialAmount(value, currency: payment.currency, hideAmounts: hideAmounts)
     }
 
     private func invoiceMoney(_ value: String) -> String {
-        (decimalValue(value) ?? 0).formattedCurrency(code: payment.invoice.currency)
+        AppPreferences.financialAmount(value, currency: payment.invoice.currency, hideAmounts: hideAmounts)
     }
 
     private var invoiceStatusTitle: String {

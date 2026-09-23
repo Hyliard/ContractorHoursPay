@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct InvoiceRowView: View {
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+
     let invoice: Invoice
 
     var body: some View {
@@ -89,7 +91,7 @@ struct InvoiceRowView: View {
                 .font(.caption2)
                 .foregroundStyle(.secondary)
 
-            Text((decimalValue(value) ?? 0).formattedCurrency(code: invoice.currency))
+            Text(AppPreferences.financialAmount(value, currency: invoice.currency, hideAmounts: hideAmounts))
                 .font(.caption)
                 .fontWeight(.semibold)
                 .lineLimit(1)

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+    @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
     @StateObject private var viewModel = DashboardViewModel()
     @StateObject private var workLogsViewModel = WorkLogsViewModel()
     @State private var isShowingProfile = false
@@ -132,21 +134,21 @@ struct DashboardView: View {
 
             MetricCard(
                 title: "Pendiente",
-                value: formattedCurrencyGroups(viewModel.pendingSummaries),
+                value: formattedCurrencyGroups(viewModel.pendingSummaries, hideAmounts: hideAmounts),
                 systemImage: "hourglass",
                 tint: .orange
             )
 
             MetricCard(
                 title: "Cobrado",
-                value: formattedCurrencyGroups(viewModel.paidSummaries),
+                value: formattedCurrencyGroups(viewModel.paidSummaries, hideAmounts: hideAmounts),
                 systemImage: "checkmark.seal.fill",
                 tint: .green
             )
 
             MetricCard(
                 title: "Vencido",
-                value: formattedCurrencyGroups(viewModel.overdueSummaries),
+                value: formattedCurrencyGroups(viewModel.overdueSummaries, hideAmounts: hideAmounts),
                 systemImage: "exclamationmark.triangle.fill",
                 tint: .red
             )
@@ -157,7 +159,8 @@ struct DashboardView: View {
         formattedCurrencyGroups(
             viewModel.summariesByCurrency.map {
                 CurrencyAmountSummary(currency: $0.currency, amount: $0.estimatedIncome)
-            }
+            },
+            hideAmounts: hideAmounts
         )
     }
 
@@ -171,7 +174,7 @@ struct DashboardView: View {
                             .font(.subheadline)
                             .fontWeight(.semibold)
                         Spacer()
-                        Text((decimalValue(invoice.outstandingAmount) ?? 0).formattedCurrency(code: invoice.currency))
+                        Text(AppPreferences.financialAmount(invoice.outstandingAmount, currency: invoice.currency, hideAmounts: hideAmounts))
                             .font(.subheadline)
                             .fontWeight(.semibold)
                     }
@@ -284,7 +287,7 @@ struct DashboardView: View {
                         NavigationLink {
                             WorkLogDetailView(workLog: workLog, workLogsViewModel: workLogsViewModel)
                         } label: {
-                            RecentWorkLogRow(workLog: workLog)
+                            RecentWorkLogRow(workLog: workLog, highlightOvertime: highlightOvertime)
                         }
                         .buttonStyle(.plain)
 
@@ -394,6 +397,8 @@ struct DashboardView: View {
 }
 
 private struct IncomeSummaryCard: View {
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+
     let summaries: [DashboardCurrencySummary]
     let totalHours: Decimal
 
@@ -405,6 +410,18 @@ private struct IncomeSummaryCard: View {
                     .foregroundStyle(.secondary)
 
                 Spacer()
+
+                Button {
+                    hideAmounts.toggle()
+                } label: {
+                    Image(systemName: hideAmounts ? "eye.slash" : "eye")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.secondary)
+                        .frame(width: 44, height: 32)
+                        .contentShape(Rectangle())
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel(hideAmounts ? "Mostrar montos" : "Ocultar montos")
             }
 
             if summaries.isEmpty {
@@ -413,12 +430,12 @@ private struct IncomeSummaryCard: View {
                     .fontWeight(.semibold)
                     .foregroundStyle(.primary)
             } else if summaries.count == 1, let summary = summaries.first {
-                Text(summary.estimatedIncome.formattedCurrency(code: summary.currency))
+                Text(AppPreferences.financialAmount(summary.estimatedIncome, currency: summary.currency, hideAmounts: hideAmounts))
                     .font(.system(.largeTitle, design: .rounded, weight: .bold))
                     .foregroundStyle(.primary)
                     .lineLimit(1)
                     .minimumScaleFactor(0.72)
-                    .accessibilityLabel("Estimado este mes \(summary.estimatedIncome.formattedCurrency(code: summary.currency))")
+                    .accessibilityLabel("Estimado este mes \(AppPreferences.financialAmount(summary.estimatedIncome, currency: summary.currency, hideAmounts: hideAmounts))")
             } else {
                 VStack(alignment: .leading, spacing: 8) {
                     ForEach(summaries) { summary in
@@ -427,7 +444,7 @@ private struct IncomeSummaryCard: View {
                                 .font(.subheadline)
                                 .foregroundStyle(.secondary)
                             Spacer()
-                            Text(summary.estimatedIncome.formattedCurrency(code: summary.currency))
+                            Text(AppPreferences.financialAmount(summary.estimatedIncome, currency: summary.currency, hideAmounts: hideAmounts))
                                 .font(.title3)
                                 .fontWeight(.semibold)
                                 .lineLimit(1)
@@ -481,14 +498,15 @@ private struct MetricCard: View {
 
 private struct RecentWorkLogRow: View {
     let workLog: WorkLog
+    let highlightOvertime: Bool
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: workLog.isOvertime ? "clock.badge.exclamationmark" : "clock")
                 .font(.subheadline)
-                .foregroundStyle(workLog.isOvertime ? .orange : .secondary)
+                .foregroundStyle(workLog.isOvertime && highlightOvertime ? .orange : .secondary)
                 .frame(width: 32, height: 32)
-                .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+                .background(overtimeBackground, in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(title)
@@ -498,6 +516,12 @@ private struct RecentWorkLogRow: View {
                 Text(workLogDate)
                     .font(.caption)
                     .foregroundStyle(.secondary)
+
+                if workLog.isOvertime {
+                    Text("Horas extra")
+                        .font(.caption2.weight(highlightOvertime ? .semibold : .regular))
+                        .foregroundStyle(highlightOvertime ? .orange : .secondary)
+                }
             }
 
             Spacer()
@@ -526,7 +550,15 @@ private struct RecentWorkLogRow: View {
         } else {
             baseDate = workLog.workDate.formatted(.dateTime.day().month(.abbreviated))
         }
-        return workLog.isOvertime ? "\(baseDate) · Overtime" : baseDate
+        return baseDate
+    }
+
+    private var overtimeBackground: Color {
+        if workLog.isOvertime && highlightOvertime {
+            return Color.orange.opacity(0.14)
+        }
+
+        return Color(.tertiarySystemGroupedBackground)
     }
 }
 

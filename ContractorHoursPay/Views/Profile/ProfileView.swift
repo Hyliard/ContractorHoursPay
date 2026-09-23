@@ -8,8 +8,32 @@ struct ProfileView: View {
     @State private var isUploadingAvatar = false
     @State private var avatarMessage: String?
     @State private var avatarErrorMessage: String?
+    @State private var isShowingDeveloperTools = false
+    @State private var copiedMessage: String?
+
+    @AppStorage(AppPreferenceKey.themePreference) private var themePreference = "system"
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+    @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+    @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
+    @AppStorage("profile.weekStartsOn") private var weekStartsOn = "monday"
+    @AppStorage("profile.hourFormat") private var hourFormat = "decimal"
+    @AppStorage("profile.preferredCurrency") private var preferredCurrency = "USD"
 
     private let avatarService = AvatarAPIService()
+    private let themeOptions = [
+        ProfilePreferenceOption(id: "system", title: "Seguir sistema"),
+        ProfilePreferenceOption(id: "light", title: "Claro"),
+        ProfilePreferenceOption(id: "dark", title: "Oscuro")
+    ]
+    private let weekStartOptions = [
+        ProfilePreferenceOption(id: "monday", title: "Lunes"),
+        ProfilePreferenceOption(id: "sunday", title: "Domingo")
+    ]
+    private let hourFormatOptions = [
+        ProfilePreferenceOption(id: "decimal", title: "Decimal"),
+        ProfilePreferenceOption(id: "compact", title: "Compacto")
+    ]
+    private let currencyOptions = ["USD", "ARS", "EUR"]
 
     var body: some View {
         NavigationStack {
@@ -18,16 +42,20 @@ struct ProfileView: View {
                     .ignoresSafeArea()
 
                 ScrollView {
-                    VStack(spacing: 20) {
+                    VStack(spacing: 18) {
                         profileHeader
-                        securityCard
-                        accountCard
+                        accountSection
+                        preferencesSection
+                        appInfoSection
+                        utilitiesSection
+                        dangerSection
                         logoutButton
                     }
                     .padding(20)
                 }
             }
             .navigationTitle("Perfil")
+            .navigationBarTitleDisplayMode(.inline)
             .refreshable {
                 try? await authManager.refreshCurrentUser()
             }
@@ -36,15 +64,43 @@ struct ProfileView: View {
                     await uploadSelectedAvatar()
                 }
             }
+            .sheet(isPresented: $isShowingDeveloperTools) {
+                DeveloperToolsView()
+                    .environmentObject(authManager)
+            }
+            .alert("Copiado", isPresented: Binding(
+                get: { copiedMessage != nil },
+                set: { if !$0 { copiedMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {}
+            } message: {
+                Text(copiedMessage ?? "")
+            }
         }
     }
 
     private var profileHeader: some View {
-        VStack(spacing: 12) {
-            UserAvatarView(user: authManager.currentUser, size: 92)
-                .environmentObject(authManager)
+        VStack(spacing: 16) {
+            ZStack(alignment: .bottomTrailing) {
+                UserAvatarView(user: authManager.currentUser, size: 104)
+                    .environmentObject(authManager)
 
-            VStack(spacing: 4) {
+                PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
+                    Image(systemName: isUploadingAvatar ? "hourglass" : "camera.fill")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(.white)
+                        .frame(width: 34, height: 34)
+                        .background(Color(red: 0.12, green: 0.34, blue: 0.25), in: Circle())
+                        .overlay {
+                            Circle()
+                                .stroke(Color(.systemGroupedBackground), lineWidth: 3)
+                        }
+                }
+                .disabled(isUploadingAvatar)
+                .accessibilityLabel("Cambiar foto de perfil")
+            }
+
+            VStack(spacing: 5) {
                 Text(authManager.currentUser?.name ?? "Usuario")
                     .font(.title2)
                     .fontWeight(.bold)
@@ -56,25 +112,25 @@ struct ProfileView: View {
                     .foregroundStyle(.secondary)
                     .multilineTextAlignment(.center)
                     .lineLimit(2)
+
+                Label("Cuenta activa", systemImage: "checkmark.seal.fill")
+                    .font(.caption.weight(.semibold))
+                    .foregroundStyle(Color(red: 0.12, green: 0.34, blue: 0.25))
+                    .padding(.horizontal, 10)
+                    .padding(.vertical, 6)
+                    .background(Color(red: 0.12, green: 0.34, blue: 0.25).opacity(0.12), in: Capsule())
+                    .padding(.top, 4)
             }
 
-            Text("Bienvenido a tu espacio personal")
-                .font(.subheadline)
-                .foregroundStyle(.secondary)
-                .padding(.top, 4)
-
-            PhotosPicker(selection: $selectedAvatarItem, matching: .images) {
-                if isUploadingAvatar {
+            if isUploadingAvatar {
+                HStack(spacing: 8) {
                     ProgressView()
-                } else {
-                    Label("Cambiar foto", systemImage: "camera")
-                        .font(.subheadline.weight(.medium))
+                        .controlSize(.small)
+                    Text("Actualizando foto...")
+                        .font(.footnote)
+                        .foregroundStyle(.secondary)
                 }
             }
-            .disabled(isUploadingAvatar)
-            .foregroundStyle(.primary)
-            .padding(.top, 4)
-            .accessibilityLabel("Cambiar foto de perfil")
 
             if let avatarMessage {
                 Text(avatarMessage)
@@ -90,10 +146,246 @@ struct ProfileView: View {
             }
         }
         .frame(maxWidth: .infinity)
-        .padding(.vertical, 24)
-        .padding(.horizontal, 16)
-        .background(.regularMaterial, in: RoundedRectangle(cornerRadius: 24, style: .continuous))
-        .shadow(color: .black.opacity(0.07), radius: 14, x: 0, y: 8)
+        .padding(.vertical, 28)
+        .padding(.horizontal, 18)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 24, style: .continuous))
+    }
+
+    private var accountSection: some View {
+        ProfileSectionCard(title: "Cuenta", systemImage: "person.text.rectangle") {
+            ProfileInfoRow(title: "Nombre", value: authManager.currentUser?.name ?? "No disponible")
+            ProfileInfoRow(title: "Email", value: authManager.currentUser?.email ?? "No disponible")
+            ProfileInfoRow(title: "Estado de sesión", value: authManager.isAuthenticated ? "Sesión activa" : "Sin sesión")
+            if let createdAt = authManager.currentUser?.createdAt {
+                ProfileInfoRow(title: "Creada", value: createdAt)
+            }
+        }
+    }
+
+    private var preferencesSection: some View {
+        ProfileSectionCard(title: "Preferencias", systemImage: "slider.horizontal.3") {
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Apariencia")
+                    .font(.subheadline.weight(.semibold))
+                Picker("Tema", selection: $themePreference) {
+                    ForEach(themeOptions) { option in
+                        Text(option.title).tag(option.id)
+                    }
+                }
+                .pickerStyle(.segmented)
+                .accessibilityLabel("Tema")
+            }
+
+            Divider()
+
+            Toggle(isOn: $hideAmounts) {
+                PreferenceLabel(
+                    title: "Ocultar montos en la app",
+                    description: "Reduce exposición visual de saldos y cobros."
+                )
+            }
+            .accessibilityLabel("Ocultar montos en la app")
+
+            Divider()
+
+            Toggle(isOn: $highlightOvertime) {
+                PreferenceLabel(
+                    title: "Resaltar horas extra",
+                    description: "Deja lista la preferencia para destacar registros especiales."
+                )
+            }
+            .accessibilityLabel("Resaltar horas extra")
+
+            Divider()
+
+            Toggle(isOn: $confirmBeforeArchive) {
+                PreferenceLabel(
+                    title: "Confirmar antes de archivar",
+                    description: "Mantiene una confirmación adicional para acciones sensibles."
+                )
+            }
+            .accessibilityLabel("Confirmar antes de archivar")
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Primer día de la semana")
+                    .font(.subheadline.weight(.semibold))
+                Picker("Primer día de la semana", selection: $weekStartsOn) {
+                    ForEach(weekStartOptions) { option in
+                        Text(option.title).tag(option.id)
+                    }
+                }
+                .pickerStyle(.segmented)
+            }
+
+            Divider()
+
+            VStack(alignment: .leading, spacing: 10) {
+                Text("Formato de horas")
+                    .font(.subheadline.weight(.semibold))
+                Picker("Formato de horas", selection: $hourFormat) {
+                    Text("Decimal (8.5 h)").tag("decimal")
+                    Text("Compacto (8 h 30 min)").tag("compact")
+                }
+                .pickerStyle(.menu)
+            }
+
+            Divider()
+
+            Picker("Moneda preferida", selection: $preferredCurrency) {
+                ForEach(currencyOptions, id: \.self) { currency in
+                    Text(currency).tag(currency)
+                }
+            }
+            .accessibilityLabel("Moneda preferida para destacar")
+        }
+    }
+
+    private var appInfoSection: some View {
+        ProfileSectionCard(title: "Aplicación", systemImage: "app.badge") {
+            ProfileInfoRow(title: "Nombre", value: appName)
+            ProfileInfoRow(title: "Versión", value: appVersion)
+            ProfileInfoRow(title: "Build", value: buildNumber)
+            ProfileInfoRow(title: "Bundle ID", value: bundleID)
+            ProfileInfoRow(title: "Entorno", value: AppConfig.environmentName)
+            ProfileInfoRow(title: "Base URL", value: AppConfig.baseURL.absoluteString)
+            ProfileInfoRow(title: "iOS", value: UIDevice.current.systemVersion)
+            ProfileInfoRow(title: "Dispositivo", value: UIDevice.current.model)
+        }
+    }
+
+    private var utilitiesSection: some View {
+        ProfileSectionCard(title: "Soporte y utilidades", systemImage: "wrench.and.screwdriver") {
+            Button {
+                isShowingDeveloperTools = true
+            } label: {
+                ProfileActionRow(
+                    systemImage: "ladybug",
+                    title: "Herramientas de desarrollo",
+                    description: "Revisá red, backend, sesión y logs.",
+                    tint: .orange
+                )
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+                .padding(.leading, 58)
+
+            NavigationLink {
+                ChangePasswordView()
+            } label: {
+                ProfileActionRow(
+                    systemImage: "lock.rotation",
+                    title: "Cambiar contraseña",
+                    description: "Actualizá tu clave de acceso.",
+                    tint: .indigo
+                )
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+                .padding(.leading, 58)
+
+            NavigationLink {
+                DevicesView()
+            } label: {
+                ProfileActionRow(
+                    systemImage: "iphone.gen3",
+                    title: "Dispositivos vinculados",
+                    description: "Consultá tus sesiones activas.",
+                    tint: .teal
+                )
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+                .padding(.leading, 58)
+
+            Button {
+                UIPasteboard.general.string = AppConfig.baseURL.absoluteString
+                copiedMessage = "Base URL copiada."
+            } label: {
+                ProfileActionRow(
+                    systemImage: "link",
+                    title: "Copiar Base URL",
+                    description: AppConfig.baseURL.absoluteString,
+                    tint: .blue
+                )
+            }
+            .buttonStyle(.plain)
+
+            Divider()
+                .padding(.leading, 58)
+
+            Button {
+                UIPasteboard.general.string = "\(appName) \(appVersion) (\(buildNumber))"
+                copiedMessage = "Versión y build copiados."
+            } label: {
+                ProfileActionRow(
+                    systemImage: "doc.on.doc",
+                    title: "Copiar versión/build",
+                    description: "\(appVersion) (\(buildNumber))",
+                    tint: .gray
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var dangerSection: some View {
+        ProfileSectionCard(title: "Cuenta", systemImage: "exclamationmark.triangle") {
+            NavigationLink {
+                DeleteAccountView()
+            } label: {
+                ProfileActionRow(
+                    systemImage: "trash.fill",
+                    title: "Eliminar cuenta",
+                    description: "Borrá tu cuenta de forma permanente.",
+                    tint: .red
+                )
+            }
+            .buttonStyle(.plain)
+        }
+    }
+
+    private var logoutButton: some View {
+        Button(role: .destructive) {
+            Task {
+                await authManager.logout()
+            }
+        } label: {
+            HStack {
+                Image(systemName: "rectangle.portrait.and.arrow.right")
+                    .font(.headline)
+
+                Text("Cerrar sesión")
+                    .font(.headline)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, 16)
+            .foregroundStyle(.red)
+            .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .padding(.top, 4)
+        .accessibilityLabel("Cerrar sesión")
+    }
+
+    private var appName: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleName") as? String ?? "ContractorHoursPay"
+    }
+
+    private var appVersion: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleShortVersionString") as? String ?? "N/D"
+    }
+
+    private var buildNumber: String {
+        Bundle.main.object(forInfoDictionaryKey: "CFBundleVersion") as? String ?? "N/D"
+    }
+
+    private var bundleID: String {
+        Bundle.main.bundleIdentifier ?? "N/D"
     }
 
     private func uploadSelectedAvatar() async {
@@ -165,88 +457,76 @@ struct ProfileView: View {
         }
         return error.localizedDescription
     }
+}
 
-    private var securityCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Seguridad")
+private struct ProfilePreferenceOption: Identifiable {
+    let id: String
+    let title: String
+}
+
+private struct ProfileSectionCard<Content: View>: View {
+    let title: String
+    let systemImage: String
+    private let content: Content
+
+    init(title: String, systemImage: String, @ViewBuilder content: () -> Content) {
+        self.title = title
+        self.systemImage = systemImage
+        self.content = content()
+    }
+
+    var body: some View {
+        VStack(alignment: .leading, spacing: 16) {
+            Label(title, systemImage: systemImage)
                 .font(.headline)
+                .foregroundStyle(.primary)
 
             VStack(spacing: 0) {
-                NavigationLink {
-                    ChangePasswordView()
-                } label: {
-                    ProfileActionRow(
-                        systemImage: "lock.rotation",
-                        title: "Cambiar contraseña",
-                        description: "Actualizá tu clave de acceso",
-                        tint: .indigo
-                    )
-                }
-                .buttonStyle(.plain)
-
-                Divider()
-                    .padding(.leading, 58)
-
-                NavigationLink {
-                    DevicesView()
-                } label: {
-                    ProfileActionRow(
-                        systemImage: "iphone.gen3",
-                        title: "Dispositivos vinculados",
-                        description: "Consultá tus sesiones activas",
-                        tint: .teal
-                    )
-                }
-                .buttonStyle(.plain)
+                content
             }
         }
         .padding(18)
+        .frame(maxWidth: .infinity, alignment: .leading)
         .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 6)
     }
+}
 
-    private var accountCard: some View {
-        VStack(alignment: .leading, spacing: 14) {
-            Text("Cuenta")
-                .font(.headline)
+private struct ProfileInfoRow: View {
+    let title: String
+    let value: String
 
-            NavigationLink {
-                DeleteAccountView()
-            } label: {
-                ProfileActionRow(
-                    systemImage: "trash.fill",
-                    title: "Eliminar cuenta",
-                    description: "Borrá tu cuenta de forma permanente",
-                    tint: .red
-                )
-            }
-            .buttonStyle(.plain)
+    var body: some View {
+        HStack(alignment: .firstTextBaseline, spacing: 12) {
+            Text(title)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Spacer(minLength: 16)
+
+            Text(value)
+                .font(.subheadline.weight(.medium))
+                .foregroundStyle(.primary)
+                .multilineTextAlignment(.trailing)
+                .lineLimit(3)
         }
-        .padding(18)
-        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 22, style: .continuous))
-        .shadow(color: .black.opacity(0.05), radius: 12, x: 0, y: 6)
+        .padding(.vertical, 8)
     }
+}
 
-    private var logoutButton: some View {
-        Button(role: .destructive) {
-            Task {
-                await authManager.logout()
-            }
-        } label: {
-            HStack {
-                Image(systemName: "rectangle.portrait.and.arrow.right")
-                    .font(.headline)
+private struct PreferenceLabel: View {
+    let title: String
+    let description: String
 
-                Text("Cerrar sesión")
-                    .font(.headline)
-            }
-            .frame(maxWidth: .infinity)
-            .padding(.vertical, 16)
-            .foregroundStyle(.red)
-            .background(Color.red.opacity(0.12), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    var body: some View {
+        VStack(alignment: .leading, spacing: 3) {
+            Text(title)
+                .font(.subheadline.weight(.semibold))
+
+            Text(description)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+                .fixedSize(horizontal: false, vertical: true)
         }
-        .buttonStyle(.plain)
-        .padding(.top, 4)
     }
 }
 

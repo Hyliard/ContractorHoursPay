@@ -3,6 +3,7 @@ import SwiftUI
 struct ClientDetailView: View {
     @Environment(\.dismiss) private var dismiss
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
     @ObservedObject var clientsViewModel: ClientsViewModel
     @StateObject private var contractsViewModel: ContractsViewModel
     @StateObject private var invoicesViewModel: InvoicesViewModel
@@ -103,7 +104,11 @@ struct ClientDetailView: View {
                 }
 
                 Button(role: .destructive) {
-                    isShowingArchiveConfirmation = true
+                    if confirmBeforeArchive {
+                        isShowingArchiveConfirmation = true
+                    } else {
+                        Task { await archive() }
+                    }
                 } label: {
                     if isArchiving {
                         ProgressView()
@@ -159,7 +164,7 @@ struct ClientDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("El cliente dejará de aparecer en la lista activa, pero su información no se eliminará permanentemente.")
+            Text("Podrás reactivarlo más adelante.")
         }
     }
 

@@ -2,6 +2,8 @@ import SwiftUI
 
 struct InvoiceDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+    @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
     @ObservedObject var invoicesViewModel: InvoicesViewModel
     @StateObject private var paymentsViewModel: PaymentsViewModel
 
@@ -116,7 +118,11 @@ struct InvoiceDetailView: View {
 
                 Button(role: invoice.active ? .destructive : nil) {
                     if invoice.active {
-                        isShowingArchiveConfirmation = true
+                        if confirmBeforeArchive {
+                            isShowingArchiveConfirmation = true
+                        } else {
+                            Task { await archive() }
+                        }
                     } else {
                         isShowingReactivateConfirmation = true
                     }
@@ -161,7 +167,7 @@ struct InvoiceDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("La factura dejará de aparecer en las listas activas, pero no se eliminará permanentemente.")
+            Text("Podrás reactivarla más adelante.")
         }
         .confirmationDialog("¿Reactivar factura?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
             Button("Reactivar factura") {
@@ -203,7 +209,7 @@ struct InvoiceDetailView: View {
     }
 
     private func money(_ value: String) -> String {
-        (decimalValue(value) ?? 0).formattedCurrency(code: invoice.currency)
+        AppPreferences.financialAmount(value, currency: invoice.currency, hideAmounts: hideAmounts)
     }
 
     private func refreshAll() async {
@@ -245,15 +251,17 @@ struct InvoiceDetailView: View {
 }
 
 private struct InvoiceWorkLogRow: View {
+    @AppStorage(AppPreferenceKey.highlightOvertime) private var highlightOvertime = true
+
     let workLog: InvoiceWorkLogSummary
 
     var body: some View {
         HStack(spacing: 12) {
             Image(systemName: workLog.isOvertime ? "clock.badge.exclamationmark" : "clock")
                 .font(.subheadline)
-                .foregroundStyle(workLog.isOvertime ? .orange : .secondary)
+                .foregroundStyle(workLog.isOvertime && highlightOvertime ? .orange : .secondary)
                 .frame(width: 32, height: 32)
-                .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+                .background(iconBackground, in: Circle())
 
             VStack(alignment: .leading, spacing: 3) {
                 Text(workLog.workDate.formatted(.dateTime.day().month().year()))
@@ -278,10 +286,19 @@ private struct InvoiceWorkLogRow: View {
                 if workLog.isOvertime {
                     Text("Horas extra")
                         .font(.caption2)
-                        .foregroundStyle(.orange)
+                        .fontWeight(highlightOvertime ? .semibold : .regular)
+                        .foregroundStyle(highlightOvertime ? .orange : .secondary)
                 }
             }
         }
         .padding(.vertical, 6)
+    }
+
+    private var iconBackground: Color {
+        if workLog.isOvertime && highlightOvertime {
+            return Color.orange.opacity(0.14)
+        }
+
+        return Color(.tertiarySystemGroupedBackground)
     }
 }

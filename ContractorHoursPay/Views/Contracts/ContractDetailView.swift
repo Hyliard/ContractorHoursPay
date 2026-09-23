@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ContractDetailView: View {
     @EnvironmentObject private var authManager: AuthManager
+    @AppStorage(AppPreferenceKey.confirmBeforeArchive) private var confirmBeforeArchive = true
     @ObservedObject var contractsViewModel: ContractsViewModel
     @StateObject private var workLogsViewModel: WorkLogsViewModel
     @StateObject private var invoicesViewModel: InvoicesViewModel
@@ -155,7 +156,11 @@ struct ContractDetailView: View {
 
                 Button(role: contract.active ? .destructive : nil) {
                     if contract.active {
-                        isShowingArchiveConfirmation = true
+                        if confirmBeforeArchive {
+                            isShowingArchiveConfirmation = true
+                        } else {
+                            Task { await archive() }
+                        }
                     } else {
                         isShowingReactivateConfirmation = true
                     }
@@ -210,7 +215,7 @@ struct ContractDetailView: View {
             }
             Button("Cancelar", role: .cancel) {}
         } message: {
-            Text("El contrato dejará de aparecer en la lista activa, pero su información no se eliminará permanentemente.")
+            Text("Podrás reactivarlo más adelante.")
         }
         .confirmationDialog("¿Reactivar \(contract.name)?", isPresented: $isShowingReactivateConfirmation, titleVisibility: .visible) {
             Button("Reactivar contrato") {

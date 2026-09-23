@@ -1,6 +1,8 @@
 import SwiftUI
 
 struct PaymentRowView: View {
+    @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
+
     let payment: Payment
 
     var body: some View {
@@ -12,7 +14,7 @@ struct PaymentRowView: View {
                 .background((payment.active ? Color.green : Color.secondary).opacity(0.12), in: Circle())
 
             VStack(alignment: .leading, spacing: 4) {
-                Text((decimalValue(payment.amount) ?? 0).formattedCurrency(code: payment.currency))
+                Text(AppPreferences.financialAmount(payment.amount, currency: payment.currency, hideAmounts: hideAmounts))
                     .font(.headline)
 
                 Text(payment.client.name)
