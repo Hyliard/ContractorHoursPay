@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 
 struct DashboardView: View {
     @EnvironmentObject private var authManager: AuthManager
@@ -7,6 +8,7 @@ struct DashboardView: View {
     @AppStorage(AppPreferenceKey.preferredCurrency) private var preferredCurrency = "USD"
     @StateObject private var viewModel = DashboardViewModel()
     @StateObject private var workLogsViewModel = WorkLogsViewModel()
+    @StateObject private var invoicesViewModel = InvoicesViewModel()
     @State private var isShowingProfile = false
     @State private var isShowingAddWorkLog = false
     @State private var isShowingDeveloperTools = false
@@ -24,15 +26,12 @@ struct DashboardView: View {
                     IncomeSummaryCard(summaries: viewModel.summariesByCurrency, totalHours: viewModel.totalHours)
                     metricsGrid
                     nextDueSection
-                    addHoursButton
+                    quickActions
                     if !viewModel.isLoading && viewModel.monthlyWorkLogs.isEmpty && viewModel.errorMessage == nil {
-                        emptyState
+                        monthlyEmptyState
                     }
-                    clientsAccess
-                    contractsAccess
-                    invoicesAccess
-                    paymentsAccess
                     recentActivity
+                    manageSection
                     accountSection
                     logoutButton
                 }
@@ -43,7 +42,7 @@ struct DashboardView: View {
             .navigationBarTitleDisplayMode(.inline)
             .overlay {
                 if viewModel.isLoading && viewModel.monthlyWorkLogs.isEmpty && viewModel.recentWorkLogs.isEmpty {
-                    ProgressView()
+                    loadingState
                 }
             }
             .task {
@@ -73,7 +72,7 @@ struct DashboardView: View {
 
     private var header: some View {
         HStack(alignment: .center, spacing: 14) {
-            VStack(alignment: .leading, spacing: 4) {
+            VStack(alignment: .leading, spacing: 6) {
                 Text("ContractorHoursPay")
                     .font(.caption)
                     .fontWeight(.semibold)
@@ -84,8 +83,8 @@ struct DashboardView: View {
                     .accessibilityLabel("ContractorHoursPay")
 
                 Text("Hola, \(authManager.currentUser?.name ?? "Contratista")")
-                    .font(.title3)
-                    .fontWeight(.semibold)
+                    .font(.title2)
+                    .fontWeight(.bold)
                     .lineLimit(1)
                     .minimumScaleFactor(0.8)
 
@@ -104,7 +103,7 @@ struct DashboardView: View {
             }
             .accessibilityLabel("Perfil")
         }
-        .padding(.top, 8)
+        .padding(.top, 6)
     }
 
     private func handleDeveloperToolsTap() {
@@ -125,7 +124,7 @@ struct DashboardView: View {
     }
 
     private var metricsGrid: some View {
-        LazyVGrid(columns: [GridItem(.adaptive(minimum: 102), spacing: 12)], spacing: 12) {
+        LazyVGrid(columns: [GridItem(.flexible(), spacing: 12), GridItem(.flexible(), spacing: 12)], spacing: 12) {
             MetricCard(
                 title: "Generado",
                 value: formattedGenerated,
@@ -168,121 +167,107 @@ struct DashboardView: View {
 
     @ViewBuilder
     private var nextDueSection: some View {
-        if let invoice = viewModel.nextDueInvoice {
-            DashboardSection(title: "Próximo vencimiento") {
-                VStack(alignment: .leading, spacing: 8) {
-                    HStack(alignment: .firstTextBaseline) {
-                        Text(invoice.client.name)
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                        Spacer()
-                        Text(AppPreferences.financialAmount(invoice.outstandingAmount, currency: invoice.currency, hideAmounts: hideAmounts))
-                            .font(.subheadline)
-                            .fontWeight(.semibold)
-                    }
+        DashboardSection(title: "Próximo vencimiento") {
+            if let invoice = viewModel.nextDueInvoice {
+                NavigationLink {
+                    InvoiceDetailView(invoice: invoice, invoicesViewModel: invoicesViewModel)
+                        .environmentObject(authManager)
+                } label: {
+                    VStack(alignment: .leading, spacing: 12) {
+                        HStack(alignment: .firstTextBaseline, spacing: 12) {
+                            VStack(alignment: .leading, spacing: 4) {
+                                Text(invoice.client.name)
+                                    .font(.headline)
+                                    .foregroundStyle(.primary)
+                                    .lineLimit(1)
 
-                    if let contract = invoice.contract {
-                        Text(contract.name)
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
-                    }
+                                if let contract = invoice.contract {
+                                    Text(contract.name)
+                                        .font(.subheadline)
+                                        .foregroundStyle(.secondary)
+                                        .lineLimit(1)
+                                }
+                            }
 
-                    if let dueDate = invoice.dueDate {
-                        Text("Vence \(dueDate.formatted(.dateTime.day().month().year()))")
-                            .font(.caption)
-                            .foregroundStyle(.secondary)
+                            Spacer()
+
+                            Text(AppPreferences.financialAmount(invoice.outstandingAmount, currency: invoice.currency, hideAmounts: hideAmounts))
+                                .font(.headline)
+                                .fontWeight(.semibold)
+                                .foregroundStyle(.primary)
+                                .multilineTextAlignment(.trailing)
+                        }
+
+                        HStack(spacing: 8) {
+                            Label(nextDueDateText(for: invoice), systemImage: "calendar")
+                                .font(.caption)
+                                .foregroundStyle(nextDueTint(for: invoice))
+
+                            Spacer()
+
+                            Text(invoice.effectiveStatus.title)
+                                .font(.caption.weight(.medium))
+                                .padding(.horizontal, 8)
+                                .padding(.vertical, 4)
+                                .background(nextDueTint(for: invoice).opacity(0.12), in: Capsule())
+                                .foregroundStyle(nextDueTint(for: invoice))
+                        }
                     }
                 }
+                .buttonStyle(.plain)
+                .accessibilityLabel("Próximo vencimiento \(invoice.client.name)")
+            } else {
+                EmptyDashboardState(
+                    systemImage: "calendar.badge.checkmark",
+                    title: "No tienes vencimientos próximos",
+                    subtitle: "Las facturas pendientes aparecerán acá."
+                )
             }
         }
     }
 
-    private var addHoursButton: some View {
-        Button {
-            isShowingAddWorkLog = true
-        } label: {
-            Label("Registrar horas", systemImage: "clock.badge.checkmark")
+    private var quickActions: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Accesos rápidos")
                 .font(.headline)
-                .frame(maxWidth: .infinity)
-                .padding(.vertical, 16)
-                .background(.blue, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
-                .foregroundStyle(.white)
-        }
-        .buttonStyle(.plain)
-        .accessibilityHint("Abre el formulario para registrar horas trabajadas")
-    }
 
-    private var clientsAccess: some View {
-        NavigationLink {
-            ClientsView()
-        } label: {
-            AccountActionRow(
-                title: "Clientes",
-                subtitle: "Gestionar clientes",
-                systemImage: "person.2.fill",
-                tint: .purple
-            )
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
+            HStack(spacing: 10) {
+                QuickActionButton(
+                    title: "Registrar horas",
+                    systemImage: "clock.badge.checkmark",
+                    tint: .blue
+                ) {
+                    impactFeedback()
+                    isShowingAddWorkLog = true
+                }
 
-    private var contractsAccess: some View {
-        NavigationLink {
-            ContractsView()
-        } label: {
-            AccountActionRow(
-                title: "Contratos",
-                subtitle: "Gestionar contratos",
-                systemImage: "doc.text.fill",
-                tint: .indigo
-            )
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
-    }
+                NavigationLink {
+                    InvoicesView()
+                } label: {
+                    QuickActionLabel(title: "Facturas", systemImage: "doc.plaintext.fill", tint: .teal)
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded { impactFeedback() })
 
-    private var invoicesAccess: some View {
-        NavigationLink {
-            InvoicesView()
-        } label: {
-            AccountActionRow(
-                title: "Facturas",
-                subtitle: "Gestionar facturación",
-                systemImage: "doc.plaintext.fill",
-                tint: .teal
-            )
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
+                NavigationLink {
+                    PaymentsView()
+                } label: {
+                    QuickActionLabel(title: "Pagos", systemImage: "banknote.fill", tint: .green)
+                }
+                .buttonStyle(.plain)
+                .simultaneousGesture(TapGesture().onEnded { impactFeedback() })
+            }
         }
-        .buttonStyle(.plain)
-    }
-
-    private var paymentsAccess: some View {
-        NavigationLink {
-            PaymentsView()
-        } label: {
-            AccountActionRow(
-                title: "Pagos",
-                subtitle: "Registrar cobros",
-                systemImage: "banknote.fill",
-                tint: .green
-            )
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 20, style: .continuous))
-        }
-        .buttonStyle(.plain)
     }
 
     private var recentActivity: some View {
         DashboardSection(title: "Actividad reciente") {
             if viewModel.recentWorkLogs.isEmpty {
-                Text("No hay actividad reciente.")
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
-                    .frame(maxWidth: .infinity, alignment: .leading)
+                EmptyDashboardState(
+                    systemImage: "clock",
+                    title: "Sin actividad reciente",
+                    subtitle: "Cuando registres horas, aparecerán acá."
+                )
             } else {
                 VStack(spacing: 0) {
                     ForEach(viewModel.recentWorkLogs) { workLog in
@@ -303,20 +288,25 @@ struct DashboardView: View {
         }
     }
 
-    private var emptyState: some View {
-        Text("No registraste horas este mes.")
-            .font(.subheadline)
-            .foregroundStyle(.secondary)
-            .frame(maxWidth: .infinity, alignment: .leading)
-            .padding(16)
-            .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    private var monthlyEmptyState: some View {
+        EmptyDashboardState(
+            systemImage: "tray",
+            title: "Aún no hay movimientos este mes",
+            subtitle: "Registra horas para empezar a ver tu resumen."
+        )
+        .padding(16)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     private func errorState(_ message: String) -> some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text(message)
-                .font(.subheadline)
+            Label("No se pudo cargar el resumen.", systemImage: "exclamationmark.triangle")
+                .font(.subheadline.weight(.semibold))
                 .foregroundStyle(.red)
+
+            Text(message)
+                .font(.footnote)
+                .foregroundStyle(.secondary)
 
             Button {
                 Task {
@@ -330,6 +320,89 @@ struct DashboardView: View {
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(16)
         .background(Color.red.opacity(0.08), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var loadingState: some View {
+        VStack(spacing: 10) {
+            ProgressView()
+            Text("Cargando resumen...")
+                .font(.footnote)
+                .foregroundStyle(.secondary)
+        }
+        .padding(18)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+    }
+
+    private var manageSection: some View {
+        DashboardSection(title: "Gestionar") {
+            VStack(spacing: 0) {
+                NavigationLink {
+                    ClientsView()
+                } label: {
+                    AccountActionRow(title: "Clientes", subtitle: "Gestionar clientes", systemImage: "person.2.fill", tint: .purple)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .padding(.leading, 46)
+
+                NavigationLink {
+                    ContractsView()
+                } label: {
+                    AccountActionRow(title: "Contratos", subtitle: "Gestionar contratos", systemImage: "doc.text.fill", tint: .indigo)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .padding(.leading, 46)
+
+                NavigationLink {
+                    InvoicesView()
+                } label: {
+                    AccountActionRow(title: "Facturas", subtitle: "Gestionar facturación", systemImage: "doc.plaintext.fill", tint: .teal)
+                }
+                .buttonStyle(.plain)
+
+                Divider()
+                    .padding(.leading, 46)
+
+                NavigationLink {
+                    PaymentsView()
+                } label: {
+                    AccountActionRow(title: "Pagos", subtitle: "Registrar cobros", systemImage: "banknote.fill", tint: .green)
+                }
+                .buttonStyle(.plain)
+            }
+        }
+    }
+
+    private func nextDueDateText(for invoice: Invoice) -> String {
+        guard let dueDate = invoice.dueDate else {
+            return "Sin vencimiento"
+        }
+
+        if Calendar.current.isDateInToday(dueDate) {
+            return "Vence hoy"
+        }
+
+        return "Vence \(dueDate.formatted(.dateTime.day().month().year()))"
+    }
+
+    private func nextDueTint(for invoice: Invoice) -> Color {
+        guard let dueDate = invoice.dueDate else {
+            return .secondary
+        }
+
+        if invoice.effectiveStatus == .overdue || dueDate.startOfBusinessDay < Date().startOfBusinessDay {
+            return .red
+        }
+
+        let daysUntilDue = Calendar.current.dateComponents([.day], from: Date().startOfBusinessDay, to: dueDate.startOfBusinessDay).day ?? 99
+        return daysUntilDue <= 3 ? .orange : .secondary
+    }
+
+    private func impactFeedback() {
+        UIImpactFeedbackGenerator(style: .light).impactOccurred()
     }
 
     private var accountSection: some View {
@@ -398,6 +471,78 @@ struct DashboardView: View {
     }
 }
 
+private struct QuickActionButton: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+    let action: () -> Void
+
+    var body: some View {
+        Button(action: action) {
+            QuickActionLabel(title: title, systemImage: systemImage, tint: tint)
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(title)
+    }
+}
+
+private struct QuickActionLabel: View {
+    let title: String
+    let systemImage: String
+    let tint: Color
+
+    var body: some View {
+        VStack(spacing: 8) {
+            Image(systemName: systemImage)
+                .font(.headline)
+                .foregroundStyle(tint)
+                .frame(width: 34, height: 34)
+                .background(tint.opacity(0.12), in: Circle())
+
+            Text(title)
+                .font(.caption.weight(.semibold))
+                .foregroundStyle(.primary)
+                .lineLimit(2)
+                .multilineTextAlignment(.center)
+                .minimumScaleFactor(0.82)
+        }
+        .frame(maxWidth: .infinity, minHeight: 86)
+        .padding(.horizontal, 8)
+        .background(Color(.secondarySystemGroupedBackground), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+        .contentShape(RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+}
+
+private struct EmptyDashboardState: View {
+    let systemImage: String
+    let title: String
+    let subtitle: String
+
+    var body: some View {
+        HStack(alignment: .top, spacing: 12) {
+            Image(systemName: systemImage)
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .frame(width: 30, height: 30)
+                .background(Color(.tertiarySystemGroupedBackground), in: Circle())
+
+            VStack(alignment: .leading, spacing: 3) {
+                Text(title)
+                    .font(.subheadline.weight(.semibold))
+                    .foregroundStyle(.primary)
+
+                Text(subtitle)
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+                    .fixedSize(horizontal: false, vertical: true)
+            }
+
+            Spacer(minLength: 0)
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+    }
+}
+
 private struct IncomeSummaryCard: View {
     @AppStorage(AppPreferenceKey.hideAmounts) private var hideAmounts = false
     @AppStorage(AppPreferenceKey.hourFormat) private var hourFormat = "decimal"
@@ -416,6 +561,7 @@ private struct IncomeSummaryCard: View {
                 Spacer()
 
                 Button {
+                    UIImpactFeedbackGenerator(style: .light).impactOccurred()
                     hideAmounts.toggle()
                 } label: {
                     Image(systemName: hideAmounts ? "eye.slash" : "eye")
